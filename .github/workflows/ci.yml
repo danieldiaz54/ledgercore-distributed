@@ -1,0 +1,113 @@
+name: LedgerCore Distributed CI & Accounting Integrity Gate
+
+on:
+  push:
+    branches: ["dev", "main", "feat/**", "fix/**", "sdd/**"]
+  pull_request:
+    branches: ["dev", "main"]
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-verify:
+    name: Python 3.12 Domain Purity, Unit, Persistence & Saga API Suite
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Syntax & Bytecode Compilation Check
+        run: python -m compileall -q src tests
+
+      - name: Domain Purity Verification (Zero External Imports in src/domain)
+        run: |
+          python -c "
+          import ast, pathlib, sys
+          allowed = {
+              '__future__', 'copy', 'dataclasses', 'datetime', 'enum',
+              'hashlib', 'json', 're', 'threading', 'time', 'typing',
+          }
+          for path in pathlib.Path('src/domain').glob('*.py'):
+              tree = ast.parse(path.read_text(encoding='utf-8'))
+              for node in ast.walk(tree):
+                  if isinstance(node, ast.Import):
+                      for alias in node.names:
+                          if alias.name not in allowed and not alias.name.startswith('src.domain'):
+                              sys.exit(f'Disallowed import {alias.name} in {path}')
+                  elif isinstance(node, ast.ImportFrom) and node.module:
+                      if node.module not in allowed and not node.module.startswith('src.domain'):
+                          sys.exit(f'Disallowed from-import {node.module} in {path}')
+          print('Domain purity verified.')
+          "
+
+      - name: Validate Java 21 Blueprint POM & Sources
+        run: |
+          python -c "
+          import pathlib, xml.etree.ElementTree as ET
+          ET.parse('java-service/pom.xml')
+          required = [
+              'java-service/src/main/java/com/ledgercore/domain/LedgerEntry.java',
+              'java-service/src/main/java/com/ledgercore/domain/OutboxEvent.java',
+              'java-service/src/main/java/com/ledgercore/application/TransferSagaOrchestrator.java',
+              'java-service/src/main/java/com/ledgercore/interfaces/TransferController.java',
+          ]
+          for item in required:
+              assert pathlib.Path(item).exists(), f'Missing Java blueprint file: {item}'
+          print('Java 21 Spring Boot 3 blueprint verified.')
+          "
+
+      - name: Run Unit, Persistence & HTTP Integration Tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Zero-Sum Double-Entry & Saga Compensation Smoke Gate
+        run: |
+          python -c "
+          from src.application.services import LedgerCoreApplicationService
+          from src.domain.exceptions import IdempotencyConflictError, InsufficientFundsError
+
+          svc = LedgerCoreApplicationService(db_path=':memory:', auto_seed=True)
+          status, settled = svc.execute_transfer(
+              {
+                  'source_account_id': 'ACC-TREASURY-001',
+                  'destination_account_id': 'ACC-MERCHANT-002',
+                  'amount_cents': 250000,
+                  'currency': 'USD',
+              },
+              idempotency_key_header='ci-smoke-001',
+          )
+          assert status == 201 and settled['saga']['status'] == 'SETTLED'
+          assert settled['zero_sum_audit']['is_balanced'] is True
+
+          replay_status, replay = svc.execute_transfer(
+              {
+                  'source_account_id': 'ACC-TREASURY-001',
+                  'destination_account_id': 'ACC-MERCHANT-002',
+                  'amount_cents': 250000,
+                  'currency': 'USD',
+              },
+              idempotency_key_header='ci-smoke-001',
+          )
+          assert replay_status == 200 and replay['idempotent_replay'] is True
+
+          comp_status, comp = svc.execute_transfer(
+              {
+                  'source_account_id': 'ACC-TREASURY-001',
+                  'destination_account_id': 'ACC-SETTLEMENT-004',
+                  'amount_cents': 100000,
+                  'currency': 'USD',
+                  'simulate_settlement_failure': True,
+              },
+              idempotency_key_header='ci-smoke-002',
+          )
+          assert comp_status == 201 and comp['saga']['status'] == 'COMPENSATED'
+          assert comp['zero_sum_audit']['is_balanced'] is True
+          assert len(svc.list_dlq_events()) == 1
+          svc.close()
+          print('LedgerCore Saga + Outbox + Zero-Sum Smoke Gate PASSED.')
+          "

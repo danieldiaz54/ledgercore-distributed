@@ -1,0 +1,2 @@
+# Core runtime uses 100% Python 3.12 standard library (zero external dependencies required).
+# Optional PostgreSQL / Redis / Kafka production drivers can be installed via `pip install .[production]`.
