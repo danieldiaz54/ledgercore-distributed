@@ -1,4019 +1,553 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>LedgerCore Distributed — Saga Orchestrator, Transactional Outbox &amp; Double-Entry Ledger Console</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <style>
-    :root {
-      /* Warm Monochrome Canvas & Surfaces (minimalist-skill) */
-      --bg-canvas: #F7F6F3;
-      --bg-surface: #FFFFFF;
-      --bg-subtle: #FBFBFA;
-      --bg-muted: #F1F0EC;
-
-      /* Off-Black Editorial Ink Hierarchy */
-      --text-primary: #111111;
-      --text-secondary: #2F3437;
-      --text-muted: #787774;
-
-      /* Structural 1px Hairline Dividers */
-      --border-hairline: #EAEAEA;
-      --border-strong: #D5D4CE;
-
-      /* Semantic Spot Pastels (Strict Muted Palette) */
-      --pastel-green-bg: #EDF3EC;
-      --pastel-green-fg: #346538;
-      --pastel-green-border: #D2E3D0;
-
-      --pastel-blue-bg: #E1F3FE;
-      --pastel-blue-fg: #1F6C9F;
-      --pastel-blue-border: #C4E5FA;
-
-      --pastel-yellow-bg: #FBF3DB;
-      --pastel-yellow-fg: #956400;
-      --pastel-yellow-border: #EFE0B4;
-
-      --pastel-red-bg: #FDEBEC;
-      --pastel-red-fg: #9F2F2D;
-      --pastel-red-border: #F5D0D2;
-
-      /* Typographic Architecture (Editorial Serif + Geometric Sans + Monospace) */
-      --font-serif: 'Instrument Serif', 'Newsreader', 'Lyon Text', 'Playfair Display', Georgia, serif;
-      --font-sans: 'Geist Sans', 'SF Pro Display', 'Plus Jakarta Sans', 'Helvetica Neue', sans-serif;
-      --font-mono: 'Geist Mono', 'JetBrains Mono', 'SF Mono', Consolas, monospace;
-
-      --radius-card: 8px;
-      --radius-btn: 5px;
-      --radius-input: 5px;
-      --radius-pill: 9999px;
-    }
-
-    *,
-    *::before,
-    *::after {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    html {
-      font-size: 16px;
-      scroll-behavior: smooth;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-    }
-
-    body {
-      background-color: var(--bg-canvas);
-      color: var(--text-primary);
-      font-family: var(--font-sans);
-      font-size: 14px;
-      line-height: 1.6;
-      min-height: 100vh;
-      position: relative;
-      overflow-x: hidden;
-    }
-
-    /* Subtle Fixed Architectural Blueprint Hairline Grid (Zero Gradients) */
-    .blueprint-grid-layer {
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      z-index: 0;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'%3E%3Cpath d='M64 0H0V64' fill='none' stroke='%23111111' stroke-opacity='0.024' stroke-width='1'/%3E%3C/svg%3E");
-      background-size: 64px 64px;
-    }
-
-    .font-mono {
-      font-family: var(--font-mono);
-      font-variant-numeric: tabular-nums;
-    }
-
-    .font-serif {
-      font-family: var(--font-serif);
-      letter-spacing: -0.025em;
-      line-height: 1.08;
-      font-weight: 400;
-    }
-
-    /* Sticky Top Navigation & Faux-OS Window Chrome */
-    .topbar {
-      position: sticky;
-      top: 0;
-      z-index: 40;
-      background-color: rgba(247, 246, 243, 0.94);
-      backdrop-filter: blur(8px);
-      border-bottom: 1px solid var(--border-hairline);
-    }
-
-    .topbar-inner {
-      max-width: 1360px;
-      margin: 0 auto;
-      padding: 12px 32px;
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 14px;
-    }
-
-    .brand-cluster {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-    }
-
-    .window-dots {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding-right: 12px;
-      border-right: 1px solid var(--border-hairline);
-    }
-
-    .window-dot {
-      width: 9px;
-      height: 9px;
-      border-radius: 50%;
-      background-color: #E3E2DD;
-      border: 1px solid #D1D0CA;
-    }
-
-    .brand-mark {
-      width: 24px;
-      height: 24px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      background-color: var(--text-primary);
-      color: #FFFFFF;
-      border-radius: 5px;
-      flex-shrink: 0;
-    }
-
-    .brand-title {
-      font-size: 14px;
-      font-weight: 600;
-      letter-spacing: -0.015em;
-      color: var(--text-primary);
-    }
-
-    .brand-meta {
-      font-size: 11px;
-      color: var(--text-muted);
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-    }
-
-    .topbar-controls {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .endpoint-chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 4px 10px;
-      background-color: var(--bg-surface);
-      border: 1px solid var(--border-hairline);
-      border-radius: var(--radius-btn);
-      font-size: 11px;
-      color: var(--text-secondary);
-    }
-
-    /* Pill Status Badges (Spot Pastels Only) */
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 3px 10px;
-      border-radius: var(--radius-pill);
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      line-height: 1.4;
-      white-space: nowrap;
-      border: 1px solid transparent;
-    }
-
-    .badge-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background-color: currentColor;
-      flex-shrink: 0;
-    }
-
-    .badge-green {
-      background-color: var(--pastel-green-bg);
-      color: var(--pastel-green-fg);
-      border-color: var(--pastel-green-border);
-    }
-
-    .badge-blue {
-      background-color: var(--pastel-blue-bg);
-      color: var(--pastel-blue-fg);
-      border-color: var(--pastel-blue-border);
-    }
-
-    .badge-yellow {
-      background-color: var(--pastel-yellow-bg);
-      color: var(--pastel-yellow-fg);
-      border-color: var(--pastel-yellow-border);
-    }
-
-    .badge-red {
-      background-color: var(--pastel-red-bg);
-      color: var(--pastel-red-fg);
-      border-color: var(--pastel-red-border);
-    }
-
-    .badge-neutral {
-      background-color: var(--bg-muted);
-      color: var(--text-secondary);
-      border-color: var(--border-hairline);
-    }
-
-    /* Keystroke Micro-UI */
-    kbd {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 20px;
-      height: 20px;
-      padding: 0 5px;
-      font-family: var(--font-mono);
-      font-size: 10px;
-      font-weight: 500;
-      color: var(--text-secondary);
-      background-color: var(--bg-canvas);
-      border: 1px solid var(--border-hairline);
-      border-radius: 4px;
-      line-height: 1;
-    }
-
-    /* Primary & Secondary Flat Buttons */
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      padding: 8px 14px;
-      border-radius: var(--radius-btn);
-      font-family: var(--font-sans);
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-      border: 1px solid transparent;
-      transition: background-color 160ms ease, border-color 160ms ease, transform 120ms ease, color 160ms ease;
-      user-select: none;
-    }
-
-    .btn:active {
-      transform: scale(0.98);
-    }
-
-    .btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-      transform: none;
-    }
-
-    .btn-primary {
-      background-color: var(--text-primary);
-      color: #FFFFFF;
-      border-color: var(--text-primary);
-    }
-
-    .btn-primary:hover:not(:disabled) {
-      background-color: #2F3437;
-      border-color: #2F3437;
-    }
-
-    .btn-secondary {
-      background-color: var(--bg-surface);
-      color: var(--text-primary);
-      border-color: var(--border-hairline);
-    }
-
-    .btn-secondary:hover:not(:disabled) {
-      background-color: var(--bg-subtle);
-      border-color: var(--border-strong);
-    }
-
-    .btn-compact {
-      padding: 5px 10px;
-      font-size: 12px;
-    }
-
-    /* Main Workspace Container with Macro-Whitespace */
-    .workspace {
-      position: relative;
-      z-index: 1;
-      max-width: 1360px;
-      margin: 0 auto;
-      padding: 48px 32px 96px;
-    }
-
-    .section-block {
-      margin-bottom: 52px;
-    }
-
-    /* Subtle Scroll Entry Animation */
-    .reveal {
-      opacity: 1;
-      transform: translateY(0);
-      transition: opacity 600ms cubic-bezier(0.16, 1, 0.3, 1), transform 600ms cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    .reveal.is-pending {
-      opacity: 0;
-      transform: translateY(12px);
-    }
-
-    /* Editorial Hero Section */
-    .hero-section {
-      padding-bottom: 32px;
-      border-bottom: 1px solid var(--border-hairline);
-      margin-bottom: 36px;
-    }
-
-    .hero-overline {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 11px;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: var(--text-muted);
-      margin-bottom: 14px;
-    }
-
-    .hero-grid {
-      display: grid;
-      grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
-      gap: 32px;
-      align-items: end;
-    }
-
-    .hero-heading {
-      font-size: clamp(2.2rem, 3.8vw, 3.15rem);
-      color: var(--text-primary);
-      margin-bottom: 14px;
-    }
-
-    .hero-subtitle {
-      max-width: 680px;
-      color: var(--text-muted);
-      font-size: 14px;
-      line-height: 1.65;
-    }
-
-    .pipeline-rail {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 6px;
-      padding: 14px 16px;
-      background-color: var(--bg-surface);
-      border: 1px solid var(--border-hairline);
-      border-radius: var(--radius-card);
-    }
-
-    .pipeline-step {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 11px;
-      color: var(--text-secondary);
-      padding: 4px 8px;
-      background-color: var(--bg-subtle);
-      border: 1px solid var(--border-hairline);
-      border-radius: 4px;
-    }
-
-    .pipeline-arrow {
-      color: var(--text-muted);
-      font-size: 11px;
-    }
-
-    /* Section Header Bar */
-    .section-header {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: baseline;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 16px;
-    }
-
-    .section-title-group {
-      display: flex;
-      align-items: baseline;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-
-    .section-title {
-      font-size: 24px;
-      color: var(--text-primary);
-    }
-
-    .section-caption {
-      font-size: 11px;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      color: var(--text-muted);
-    }
-
-    /* Flat Card Base */
-    .card {
-      background-color: var(--bg-surface);
-      border: 1px solid var(--border-hairline);
-      border-radius: var(--radius-card);
-      transition: box-shadow 200ms ease, border-color 200ms ease;
-    }
-
-    .card-hover:hover {
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-      border-color: var(--border-strong);
-    }
-
-    /* 1. Global Zero-Sum Accounting Telemetry Strip */
-    .telemetry-strip {
-      display: grid;
-      grid-template-columns: repeat(6, minmax(0, 1fr));
-      gap: 12px;
-    }
-
-    .kpi-card {
-      padding: 18px 20px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      gap: 10px;
-    }
-
-    .kpi-label-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-    }
-
-    .kpi-label {
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      color: var(--text-muted);
-    }
-
-    .kpi-value {
-      font-size: 22px;
-      font-weight: 600;
-      letter-spacing: -0.02em;
-      color: var(--text-primary);
-      line-height: 1.15;
-    }
-
-    .kpi-sub {
-      font-size: 11px;
-      color: var(--text-muted);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 6px;
-    }
-
-    /* 2. Accounts Balance Board (5 Seeded Accounts) */
-    .accounts-grid {
-      display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
-      gap: 12px;
-    }
-
-    .account-card {
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      gap: 14px;
-      min-height: 158px;
-    }
-
-    .account-card.is-escrow {
-      background-color: var(--bg-subtle);
-      border-style: dashed;
-      border-color: var(--border-strong);
-    }
-
-    .account-top {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-    }
-
-    .account-id {
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--text-primary);
-      letter-spacing: 0.01em;
-    }
-
-    .account-version {
-      font-size: 11px;
-      padding: 2px 7px;
-      border-radius: var(--radius-pill);
-      background-color: var(--bg-muted);
-      color: var(--text-secondary);
-      border: 1px solid var(--border-hairline);
-    }
-
-    .account-owner {
-      font-size: 13px;
-      color: var(--text-muted);
-      line-height: 1.35;
-      margin-top: 4px;
-    }
-
-    .account-balance {
-      font-size: 23px;
-      font-weight: 600;
-      letter-spacing: -0.025em;
-      color: var(--text-primary);
-      line-height: 1.1;
-    }
-
-    .account-footer {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      padding-top: 10px;
-      border-top: 1px solid var(--border-hairline);
-      font-size: 11px;
-      color: var(--text-muted);
-    }
-
-    /* 3. Asymmetric Workbench & Inspector Bento Grid */
-    .workbench-grid {
-      display: grid;
-      grid-template-columns: minmax(0, 1.32fr) minmax(0, 1fr);
-      gap: 20px;
-      align-items: start;
-    }
-
-    .panel {
-      padding: 28px;
-    }
-
-    .panel-header {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      padding-bottom: 18px;
-      margin-bottom: 20px;
-      border-bottom: 1px solid var(--border-hairline);
-    }
-
-    .panel-title {
-      font-size: 22px;
-      color: var(--text-primary);
-    }
-
-    .route-tag {
-      font-size: 11px;
-      padding: 3px 9px;
-      background-color: var(--bg-subtle);
-      border: 1px solid var(--border-hairline);
-      border-radius: 4px;
-      color: var(--text-secondary);
-    }
-
-    /* 4 One-Click Demo Scenario Buttons */
-    .demo-section-label {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--text-muted);
-      margin-bottom: 10px;
-    }
-
-    .demo-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
-      margin-bottom: 24px;
-    }
-
-    .demo-btn {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 8px;
-      padding: 12px 14px;
-      background-color: var(--bg-subtle);
-      border: 1px solid var(--border-hairline);
-      border-radius: 6px;
-      cursor: pointer;
-      text-align: left;
-      color: var(--text-primary);
-      transition: background-color 150ms ease, border-color 150ms ease, transform 120ms ease;
-    }
-
-    .demo-btn:hover:not(:disabled) {
-      background-color: var(--bg-surface);
-      border-color: var(--border-strong);
-    }
-
-    .demo-btn:active:not(:disabled) {
-      transform: scale(0.985);
-    }
-
-    .demo-btn-top {
-      width: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-    }
-
-    .demo-btn-title {
-      font-size: 12.5px;
-      font-weight: 600;
-      color: var(--text-primary);
-      line-height: 1.3;
-    }
-
-    .demo-btn-desc {
-      font-size: 11.5px;
-      color: var(--text-muted);
-      line-height: 1.4;
-    }
-
-    /* Transfer Form Controls */
-    .form-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 16px;
-    }
-
-    .form-field {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .form-field.full-span {
-      grid-column: 1 / -1;
-    }
-
-    .field-label-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-    }
-
-    .field-label {
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--text-secondary);
-    }
-
-    .field-hint {
-      font-size: 11px;
-      color: var(--text-muted);
-    }
-
-    .input-control,
-    .select-control {
-      width: 100%;
-      height: 40px;
-      padding: 0 12px;
-      background-color: var(--bg-surface);
-      border: 1px solid var(--border-strong);
-      border-radius: var(--radius-input);
-      color: var(--text-primary);
-      font-family: var(--font-sans);
-      font-size: 13px;
-      transition: border-color 150ms ease, background-color 150ms ease;
-    }
-
-    .input-control.font-mono,
-    .select-control.font-mono {
-      font-family: var(--font-mono);
-      font-size: 12.5px;
-    }
-
-    .input-control:focus,
-    .select-control:focus {
-      outline: none;
-      border-color: var(--text-primary);
-    }
-
-    .input-control.is-invalid,
-    .select-control.is-invalid {
-      border-color: var(--pastel-red-fg);
-      background-color: #FFFBFB;
-    }
-
-    .amount-input-wrap {
-      position: relative;
-      display: flex;
-      align-items: center;
-    }
-
-    .amount-prefix {
-      position: absolute;
-      left: 12px;
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text-muted);
-      pointer-events: none;
-    }
-
-    .amount-input-wrap .input-control {
-      padding-left: 26px;
-      padding-right: 54px;
-    }
-
-    .amount-suffix {
-      position: absolute;
-      right: 12px;
-      font-size: 11px;
-      color: var(--text-muted);
-      pointer-events: none;
-    }
-
-    .input-inline-row {
-      display: flex;
-      gap: 8px;
-    }
-
-    .input-inline-row .input-control {
-      flex: 1;
-    }
-
-    .validation-msg {
-      min-height: 18px;
-      font-size: 11.5px;
-      line-height: 1.4;
-      color: var(--text-muted);
-    }
-
-    .validation-msg.is-error {
-      color: var(--pastel-red-fg);
-      font-weight: 500;
-    }
-
-    .validation-msg.is-valid {
-      color: var(--pastel-green-fg);
-    }
-
-    /* Live SHA-256 Fingerprint Preview Box */
-    .fingerprint-box {
-      padding: 12px 14px;
-      background-color: var(--bg-subtle);
-      border: 1px solid var(--border-hairline);
-      border-radius: 6px;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .fingerprint-label {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      font-size: 10.5px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--text-muted);
-    }
-
-    .fingerprint-hash {
-      font-size: 11.5px;
-      color: var(--text-secondary);
-      word-break: break-all;
-      line-height: 1.45;
-    }
-
-    /* Compensation Failure Toggle Panel */
-    .checkbox-panel {
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-      padding: 13px 14px;
-      background-color: var(--bg-subtle);
-      border: 1px solid var(--border-hairline);
-      border-radius: 6px;
-      cursor: pointer;
-      transition: border-color 150ms ease, background-color 150ms ease;
-    }
-
-    .checkbox-panel.is-armed {
-      background-color: var(--pastel-yellow-bg);
-      border-color: var(--pastel-yellow-border);
-    }
-
-    .checkbox-panel input[type="checkbox"] {
-      width: 16px;
-      height: 16px;
-      margin-top: 2px;
-      accent-color: var(--text-primary);
-      cursor: pointer;
-      flex-shrink: 0;
-    }
-
-    .checkbox-title {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text-primary);
-      display: block;
-    }
-
-    .checkbox-desc {
-      font-size: 11.5px;
-      color: var(--text-muted);
-      display: block;
-      margin-top: 2px;
-    }
-
-    .form-actions {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      margin-top: 20px;
-      padding-top: 18px;
-      border-top: 1px solid var(--border-hairline);
-    }
-
-    .form-actions-left {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 8px;
-    }
-
-    /* Right Panel: Live HTTP Response & Saga State Inspector */
-    .saga-stepper {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      flex-wrap: wrap;
-      padding: 12px 14px;
-      background-color: var(--bg-subtle);
-      border: 1px solid var(--border-hairline);
-      border-radius: 6px;
-      margin-bottom: 18px;
-    }
-
-    .step-node {
-      font-size: 10.5px;
-      font-weight: 600;
-      letter-spacing: 0.04em;
-      padding: 3px 8px;
-      border-radius: 4px;
-      border: 1px solid var(--border-hairline);
-      color: var(--text-muted);
-      background-color: var(--bg-surface);
-    }
-
-    .step-node.is-done {
-      background-color: var(--pastel-green-bg);
-      color: var(--pastel-green-fg);
-      border-color: var(--pastel-green-border);
-    }
-
-    .step-node.is-replay {
-      background-color: var(--pastel-blue-bg);
-      color: var(--pastel-blue-fg);
-      border-color: var(--pastel-blue-border);
-    }
-
-    .step-node.is-compensated {
-      background-color: var(--pastel-yellow-bg);
-      color: var(--pastel-yellow-fg);
-      border-color: var(--pastel-yellow-border);
-    }
-
-    .step-node.is-error {
-      background-color: var(--pastel-red-bg);
-      color: var(--pastel-red-fg);
-      border-color: var(--pastel-red-border);
-    }
-
-    .step-sep {
-      font-size: 11px;
-      color: var(--border-strong);
-    }
-
-    .inspector-banner {
-      padding: 12px 14px;
-      border-radius: 6px;
-      border: 1px solid var(--border-hairline);
-      background-color: var(--bg-subtle);
-      margin-bottom: 16px;
-      font-size: 12.5px;
-      color: var(--text-secondary);
-      line-height: 1.5;
-    }
-
-    .inspector-banner.tone-green {
-      background-color: var(--pastel-green-bg);
-      border-color: var(--pastel-green-border);
-      color: var(--pastel-green-fg);
-    }
-
-    .inspector-banner.tone-blue {
-      background-color: var(--pastel-blue-bg);
-      border-color: var(--pastel-blue-border);
-      color: var(--pastel-blue-fg);
-    }
-
-    .inspector-banner.tone-yellow {
-      background-color: var(--pastel-yellow-bg);
-      border-color: var(--pastel-yellow-border);
-      color: var(--pastel-yellow-fg);
-    }
-
-    .inspector-banner.tone-red {
-      background-color: var(--pastel-red-bg);
-      border-color: var(--pastel-red-border);
-      color: var(--pastel-red-fg);
-    }
-
-    .meta-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
-      margin-bottom: 16px;
-    }
-
-    .meta-cell {
-      padding: 10px 12px;
-      background-color: var(--bg-subtle);
-      border: 1px solid var(--border-hairline);
-      border-radius: 6px;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .meta-cell.full-span {
-      grid-column: 1 / -1;
-    }
-
-    .meta-key {
-      font-size: 10.5px;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--text-muted);
-    }
-
-    .meta-val {
-      font-size: 12.5px;
-      font-weight: 500;
-      color: var(--text-primary);
-      word-break: break-all;
-    }
-
-    .payload-drawer {
-      border: 1px solid var(--border-hairline);
-      border-radius: 6px;
-      overflow: hidden;
-    }
-
-    .payload-drawer-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 8px 12px;
-      background-color: var(--bg-subtle);
-      border-bottom: 1px solid var(--border-hairline);
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    .payload-pre {
-      padding: 12px;
-      background-color: var(--bg-surface);
-      font-size: 11.5px;
-      line-height: 1.55;
-      color: var(--text-secondary);
-      max-height: 220px;
-      overflow: auto;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-
-    /* 4. Event Bus Tabs (Outbox, Kafka, DLQ, Sagas) */
-    .tabs-bar {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 0 24px;
-      border-bottom: 1px solid var(--border-hairline);
-      background-color: var(--bg-subtle);
-      border-top-left-radius: var(--radius-card);
-      border-top-right-radius: var(--radius-card);
-    }
-
-    .tab-list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 4px;
-    }
-
-    .tab-btn {
-      position: relative;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 14px 14px;
-      background: transparent;
-      border: none;
-      border-bottom: 2px solid transparent;
-      font-family: var(--font-sans);
-      font-size: 13px;
-      font-weight: 500;
-      color: var(--text-muted);
-      cursor: pointer;
-      transition: color 150ms ease, border-color 150ms ease;
-    }
-
-    .tab-btn:hover {
-      color: var(--text-primary);
-    }
-
-    .tab-btn.is-active {
-      color: var(--text-primary);
-      font-weight: 600;
-      border-bottom-color: var(--text-primary);
-    }
-
-    .tab-count {
-      font-size: 11px;
-      padding: 1px 7px;
-      border-radius: var(--radius-pill);
-      background-color: var(--bg-muted);
-      color: var(--text-secondary);
-    }
-
-    .tab-btn.is-active .tab-count {
-      background-color: var(--text-primary);
-      color: #FFFFFF;
-    }
-
-    .tab-count.has-alert {
-      background-color: var(--pastel-red-bg);
-      color: var(--pastel-red-fg);
-    }
-
-    .tab-panel {
-      display: none;
-    }
-
-    .tab-panel.is-active {
-      display: block;
-    }
-
-    /* Clean Hairline Data Tables */
-    .table-wrap {
-      width: 100%;
-      overflow-x: auto;
-    }
-
-    .data-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 12.5px;
-      text-align: left;
-    }
-
-    .data-table th {
-      padding: 11px 16px;
-      font-size: 10.5px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--text-muted);
-      background-color: var(--bg-subtle);
-      border-bottom: 1px solid var(--border-hairline);
-      white-space: nowrap;
-    }
-
-    .data-table td {
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--border-hairline);
-      color: var(--text-secondary);
-      vertical-align: middle;
-    }
-
-    .data-table tbody tr:last-child td {
-      border-bottom: none;
-    }
-
-    .data-table tbody tr:hover td {
-      background-color: var(--bg-subtle);
-    }
-
-    .data-table tbody tr.is-clickable {
-      cursor: pointer;
-    }
-
-    .data-table tfoot td {
-      padding: 13px 16px;
-      background-color: var(--bg-subtle);
-      border-top: 1px solid var(--border-strong);
-      font-weight: 600;
-      color: var(--text-primary);
-    }
-
-    .col-right {
-      text-align: right;
-    }
-
-    .cell-stack {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-
-    .cell-sub {
-      font-size: 11px;
-      color: var(--text-muted);
-    }
-
-    .empty-state {
-      padding: 44px 24px;
-      text-align: center;
-      color: var(--text-muted);
-      font-size: 13px;
-    }
-
-    .empty-state-title {
-      font-weight: 600;
-      color: var(--text-secondary);
-      margin-bottom: 4px;
-    }
-
-    /* Ledger Controls Row */
-    .ledger-controls {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .ledger-filter-select {
-      height: 32px;
-      padding: 0 10px;
-      font-size: 12px;
-      background-color: var(--bg-surface);
-      border: 1px solid var(--border-hairline);
-      border-radius: var(--radius-btn);
-      color: var(--text-secondary);
-    }
-
-    /* Footer */
-    .editorial-footer {
-      margin-top: 64px;
-      padding-top: 24px;
-      border-top: 1px solid var(--border-hairline);
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      font-size: 12px;
-      color: var(--text-muted);
-    }
-
-    /* Responsive Breakpoints */
-    @media (max-width: 1200px) {
-      .telemetry-strip {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LedgerCore Distributed — Billetera Digital y Transferencias Seguras</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Albert+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    />
+    <style>
+      :root {
+        color-scheme: light;
+        --bg-mint: #f4f7f6;
+        --bg-card: #ffffff;
+        --bg-soft: #ecf2ef;
+        --pine-deep: #064e3b;
+        --emerald-cta: #047857;
+        --emerald-hover: #065f46;
+        --ink-slate: #0f172a;
+        --ink-muted: #475569;
+        --border-pine: #d1ddd9;
+        --amber-warn: #b45309;
+        --amber-bg: #fef3c7;
+        --ok-bg: #ecfdf5;
+        --font-sans: "Albert Sans", system-ui, sans-serif;
+        --font-mono: "JetBrains Mono", ui-monospace, monospace;
       }
-      .accounts-grid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-      }
-    }
 
-    @media (max-width: 960px) {
-      .hero-grid,
-      .workbench-grid {
-        grid-template-columns: minmax(0, 1fr);
+      *, *::before, *::after { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg-mint);
+        color: var(--ink-slate);
+        font-family: var(--font-sans);
+        line-height: 1.5;
       }
-      .accounts-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-      .workspace {
-        padding: 32px 20px 72px;
-      }
-      .topbar-inner {
-        padding: 12px 20px;
-      }
-    }
+      ::selection { background: #d1fae5; color: var(--pine-deep); }
+      :focus-visible { outline: 2px solid var(--pine-deep); outline-offset: 2px; }
+      button, input, select { font-family: inherit; }
+      .lc-mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 
-    @media (max-width: 640px) {
-      .telemetry-strip {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+      .lc-header {
+        background: var(--bg-card);
+        border-bottom: 1px solid var(--border-pine);
+        padding: 13px 24px;
       }
-      .accounts-grid,
-      .demo-grid,
-      .form-grid,
-      .meta-grid {
-        grid-template-columns: minmax(0, 1fr);
+      .lc-header-inner {
+        max-width: 1180px;
+        margin: 0 auto;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
       }
-      .panel {
-        padding: 20px;
+      .lc-brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
       }
-    }
+      .lc-logo {
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        background: var(--pine-deep);
+        color: #ffffff;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+      }
+      .lc-brand h1 { font-size: 19px; font-weight: 700; margin: 0; color: var(--pine-deep); }
+      .lc-brand span { font-size: 13px; color: var(--ink-muted); }
 
-    @media (prefers-reduced-motion: reduce) {
-      .reveal {
-        transition: none;
-        transform: none;
-        opacity: 1;
+      .lc-btn-primary {
+        border: 1px solid var(--emerald-cta);
+        background: var(--emerald-cta);
+        color: #ffffff;
+        border-radius: 8px;
+        padding: 9px 16px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
       }
-      .btn,
-      .card,
-      .demo-btn {
-        transition: none;
+      .lc-btn-primary:hover { background: var(--emerald-hover); }
+      .lc-btn-outline {
+        border: 1px solid var(--border-pine);
+        background: var(--bg-card);
+        color: var(--ink-slate);
+        border-radius: 8px;
+        padding: 8px 14px;
+        font-size: 13.5px;
+        font-weight: 600;
+        cursor: pointer;
       }
-    }
-  </style>
-</head>
-<body>
-  <div class="blueprint-grid-layer" aria-hidden="true"></div>
+      .lc-btn-outline:hover { background: var(--bg-soft); }
+      .lc-btn-warn {
+        border: 1px solid #f59e0b;
+        background: var(--amber-bg);
+        color: var(--amber-warn);
+        border-radius: 8px;
+        padding: 8px 13px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+      }
 
-  <!-- Minimalist Faux-OS Window Chrome & Top Control Bar -->
-  <header class="topbar">
-    <div class="topbar-inner">
-      <div class="brand-cluster">
-        <div class="window-dots" aria-hidden="true">
-          <span class="window-dot"></span>
-          <span class="window-dot"></span>
-          <span class="window-dot"></span>
+      .lc-main {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 26px 24px 60px;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+        gap: 24px;
+        align-items: start;
+      }
+
+      .lc-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-pine);
+        border-radius: 14px;
+        padding: 22px;
+      }
+      .lc-balance-hero {
+        background: var(--pine-deep);
+        color: #ffffff;
+        border-radius: 14px;
+        padding: 24px;
+        margin-bottom: 18px;
+      }
+      .lc-balance-label { font-size: 13px; opacity: 0.85; }
+      .lc-balance-amount {
+        font-family: var(--font-mono);
+        font-variant-numeric: tabular-nums;
+        font-size: clamp(2rem, 3.6vw, 2.75rem);
+        font-weight: 600;
+        margin: 6px 0 14px;
+        letter-spacing: -0.02em;
+      }
+      .lc-account-pills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .lc-acc-pill {
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        background: rgba(255, 255, 255, 0.08);
+        color: #ffffff;
+        border-radius: 9999px;
+        padding: 5px 12px;
+        font-size: 12.5px;
+        cursor: pointer;
+      }
+      .lc-acc-pill[data-active="true"] {
+        background: #ffffff;
+        color: var(--pine-deep);
+        font-weight: 600;
+      }
+
+      .lc-field { margin-bottom: 14px; }
+      .lc-field label { display: block; font-size: 13px; font-weight: 600; color: var(--ink-muted); margin-bottom: 6px; }
+      .lc-input {
+        width: 100%;
+        border: 1px solid var(--border-pine);
+        background: var(--bg-mint);
+        border-radius: 8px;
+        padding: 10px 12px;
+        font-size: 14px;
+        color: var(--ink-slate);
+      }
+
+      .lc-demo-box {
+        margin-top: 18px;
+        padding-top: 16px;
+        border-top: 1px solid var(--border-pine);
+      }
+      .lc-demo-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 8px;
+      }
+
+      .lc-banner-feedback {
+        border-radius: 10px;
+        padding: 12px 14px;
+        margin-bottom: 14px;
+        font-size: 13.5px;
+        display: none;
+      }
+      .lc-banner-feedback[data-tone="ok"] { display: block; background: var(--ok-bg); border: 1px solid #a7f3d0; color: var(--pine-deep); }
+      .lc-banner-feedback[data-tone="warn"] { display: block; background: var(--amber-bg); border: 1px solid #fcd34d; color: var(--amber-warn); }
+
+      .lc-tx-list { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+      .lc-tx-item {
+        border: 1px solid var(--border-pine);
+        background: var(--bg-mint);
+        border-radius: 10px;
+        padding: 12px 14px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+      }
+      .lc-badge-ok { background: var(--ok-bg); color: var(--emerald-cta); padding: 3px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+      .lc-badge-rev { background: var(--amber-bg); color: var(--amber-warn); padding: 3px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+
+      /* Layer 2 Drawer */
+      .lc-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.35);
+        z-index: 40;
+        display: none;
+        justify-content: flex-end;
+      }
+      .lc-backdrop[data-open="true"] { display: flex; }
+      .lc-drawer {
+        width: min(470px, 100vw);
+        height: 100%;
+        background: var(--bg-card);
+        border-left: 1px solid var(--border-pine);
+        display: flex;
+        flex-direction: column;
+      }
+      .lc-drawer-head {
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border-pine);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .lc-drawer-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 18px 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+
+      @media (max-width: 860px) {
+        .lc-main { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="lc-header">
+      <div class="lc-header-inner">
+        <div class="lc-brand">
+          <span class="lc-logo">L</span>
+          <div>
+            <h1>LedgerCore Distributed</h1>
+            <span>Billetera personal y transferencias protegidas contra fallos de red</span>
+          </div>
         </div>
-        <div class="brand-mark" aria-hidden="true">
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x="2" y="2" width="5" height="12" stroke="currentColor" stroke-width="1.8" />
-            <rect x="9" y="2" width="5" height="12" stroke="currentColor" stroke-width="1.8" />
-            <line x1="2" y1="8" x2="14" y2="8" stroke="currentColor" stroke-width="1.8" />
-          </svg>
-        </div>
-        <div>
-          <div class="brand-title">LedgerCore Distributed</div>
-          <div class="brand-meta font-mono">SAGA ORCHESTRATOR · OUTBOX · DOUBLE-ENTRY LEDGER</div>
-        </div>
+        <button type="button" class="lc-btn-outline" id="lc-arch-btn">Arquitectura</button>
       </div>
+    </header>
 
-      <div class="topbar-controls">
-        <span id="mode-badge" class="badge badge-blue font-mono" role="status" aria-live="polite">
-          <span class="badge-dot" aria-hidden="true"></span>
-          <span id="mode-badge-text">PROBING API</span>
-        </span>
-        <span id="api-endpoint-chip" class="endpoint-chip font-mono">http://127.0.0.1:8096</span>
-        <button id="btn-sync-api" type="button" class="btn btn-secondary btn-compact">
-          <span>Sync API</span>
-          <kbd>R</kbd>
-        </button>
-        <button id="btn-reset-local" type="button" class="btn btn-secondary btn-compact" hidden>
-          Reset Local Engine
-        </button>
+    <main class="lc-main">
+      <section aria-label="Saldo y envío de dinero">
+        <div class="lc-balance-hero">
+          <div class="lc-balance-label" id="lc-active-owner">Cuenta seleccionada</div>
+          <div class="lc-balance-amount" id="lc-active-balance">$0.00 USD</div>
+          <div class="lc-account-pills" id="lc-account-pills"></div>
+        </div>
+
+        <div class="lc-card">
+          <h2 style="margin:0 0 14px;font-size:18px;">Enviar dinero</h2>
+          <div id="lc-feedback-box" class="lc-banner-feedback" role="status" aria-live="polite"></div>
+
+          <form id="lc-transfer-form">
+            <div class="lc-field">
+              <label for="lc-dest-select">Destinatario</label>
+              <select id="lc-dest-select" class="lc-input"></select>
+            </div>
+            <div class="lc-field">
+              <label for="lc-amount-input">Monto (USD)</label>
+              <input id="lc-amount-input" class="lc-input lc-mono" type="number" min="1" step="0.01" value="125.00" />
+            </div>
+            <button type="submit" class="lc-btn-primary" style="width:100%;">Enviar transferencia</button>
+          </form>
+
+          <div class="lc-demo-box">
+            <span style="font-size:13px;font-weight:600;color:var(--ink-muted);">Pruebas guiadas de seguridad financiera</span>
+            <div class="lc-demo-row">
+              <button type="button" class="lc-btn-outline" id="lc-double-click-btn">Probar doble clic (mismo pago)</button>
+              <button type="button" class="lc-btn-warn" id="lc-net-fail-btn">Simular fallo de red</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="lc-card" aria-label="Movimientos recientes">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <h2 style="margin:0;font-size:18px;">Movimientos recientes</h2>
+          <span class="lc-mono" id="lc-balance-integrity" style="font-size:12.5px;color:var(--emerald-cta);">Descuadre: $0.00</span>
+        </div>
+        <div class="lc-tx-list" id="lc-tx-list"></div>
+      </section>
+    </main>
+
+    <!-- Layer 2 Architecture Drawer -->
+    <div class="lc-backdrop" id="lc-arch-backdrop" data-open="false" role="dialog" aria-modal="true">
+      <div class="lc-drawer">
+        <div class="lc-drawer-head">
+          <h2 style="margin:0;font-size:17px;">Motor Saga, Outbox &amp; Partida Doble</h2>
+          <button type="button" class="lc-btn-outline" id="lc-arch-close">Cerrar</button>
+        </div>
+        <div class="lc-drawer-body" id="lc-arch-body"></div>
       </div>
     </div>
-  </header>
 
-  <main class="workspace">
-    <!-- Editorial Hero Section -->
-    <section class="hero-section reveal">
-      <div class="hero-overline font-mono">
-        <span>SPEC-02 DISTRIBUTED ACCOUNTING CONSOLE</span>
-        <span>·</span>
-        <span>EXACT INTEGER-CENT INVARIANT</span>
-      </div>
-      <div class="hero-grid">
-        <div>
-          <h1 class="hero-heading font-serif">Saga Orchestrator, Transactional Outbox &amp; Double-Entry Ledger</h1>
-          <p class="hero-subtitle">
-            Deterministic financial state machine combining atomic two-phase escrow settlement, SHA-256 idempotency request fingerprinting, monotonically increasing distributed fencing tokens, and append-only zero-sum journal postings.
-          </p>
-        </div>
-        <div class="pipeline-rail font-mono" aria-label="Execution Pipeline">
-          <span class="pipeline-step">01 Idempotency</span>
-          <span class="pipeline-arrow" aria-hidden="true">-&gt;</span>
-          <span class="pipeline-step">02 Fencing Lock</span>
-          <span class="pipeline-arrow" aria-hidden="true">-&gt;</span>
-          <span class="pipeline-step">03 ACID Reserve</span>
-          <span class="pipeline-arrow" aria-hidden="true">-&gt;</span>
-          <span class="pipeline-step">04 Outbox -&gt; Kafka</span>
-          <span class="pipeline-arrow" aria-hidden="true">-&gt;</span>
-          <span class="pipeline-step">05 Settle / Compensate</span>
-        </div>
-      </div>
-    </section>
-
-    <!-- 1. Global Zero-Sum Accounting Telemetry Strip -->
-    <section class="section-block reveal" aria-labelledby="telemetry-heading">
-      <div class="section-header">
-        <div class="section-title-group">
-          <h2 id="telemetry-heading" class="section-title font-serif">Global Zero-Sum Telemetry</h2>
-          <span class="section-caption font-mono">REAL-TIME ACCOUNTING AUDIT · SUM(DEBIT) == SUM(CREDIT)</span>
-        </div>
-        <span id="audit-timestamp" class="section-caption font-mono">AUDITED: PENDING</span>
-      </div>
-
-      <div class="telemetry-strip">
-        <article class="card card-hover kpi-card">
-          <div class="kpi-label-row">
-            <span class="kpi-label">Total Debits</span>
-            <span class="badge badge-blue font-mono">DR</span>
-          </div>
-          <div id="kpi-total-debits" class="kpi-value font-mono">$0.00</div>
-          <div class="kpi-sub font-mono">
-            <span id="kpi-total-debits-cents">0 cents</span>
-            <span id="kpi-total-entries">0 rows</span>
-          </div>
-        </article>
-
-        <article class="card card-hover kpi-card">
-          <div class="kpi-label-row">
-            <span class="kpi-label">Total Credits</span>
-            <span class="badge badge-green font-mono">CR</span>
-          </div>
-          <div id="kpi-total-credits" class="kpi-value font-mono">$0.00</div>
-          <div class="kpi-sub font-mono">
-            <span id="kpi-total-credits-cents">0 cents</span>
-            <span>USD</span>
-          </div>
-        </article>
-
-        <article class="card card-hover kpi-card">
-          <div class="kpi-label-row">
-            <span class="kpi-label">Imbalance</span>
-            <span id="kpi-balance-badge" class="badge badge-green font-mono">BALANCED</span>
-          </div>
-          <div id="kpi-imbalance" class="kpi-value font-mono">$0.00</div>
-          <div class="kpi-sub font-mono">
-            <span id="kpi-imbalance-cents">0 cents drift</span>
-          </div>
-        </article>
-
-        <article class="card card-hover kpi-card">
-          <div class="kpi-label-row">
-            <span class="kpi-label">Active Sagas</span>
-            <span class="badge badge-neutral font-mono">SAGA</span>
-          </div>
-          <div id="kpi-active-sagas" class="kpi-value font-mono">0</div>
-          <div class="kpi-sub font-mono">
-            <span id="kpi-sagas-breakdown">0 settled · 0 comp.</span>
-          </div>
-        </article>
-
-        <article class="card card-hover kpi-card">
-          <div class="kpi-label-row">
-            <span class="kpi-label">Outbox Published</span>
-            <span class="badge badge-green font-mono">RELAY</span>
-          </div>
-          <div id="kpi-outbox-published" class="kpi-value font-mono">0</div>
-          <div class="kpi-sub font-mono">
-            <span id="kpi-outbox-pending">0 pending · 0 kafka</span>
-          </div>
-        </article>
-
-        <article class="card card-hover kpi-card">
-          <div class="kpi-label-row">
-            <span class="kpi-label">DLQ Count</span>
-            <span id="kpi-dlq-badge" class="badge badge-green font-mono">CLEAR</span>
-          </div>
-          <div id="kpi-dlq-count" class="kpi-value font-mono">0</div>
-          <div class="kpi-sub font-mono">
-            <span id="kpi-dlq-sub">ledger.transfers.dlq</span>
-          </div>
-        </article>
-      </div>
-    </section>
-
-    <!-- 2. Accounts Balance Board -->
-    <section class="section-block reveal" aria-labelledby="accounts-heading">
-      <div class="section-header">
-        <div class="section-title-group">
-          <h2 id="accounts-heading" class="section-title font-serif">Accounts Balance Board</h2>
-          <span class="section-caption font-mono">5 SEEDED ACCOUNTS · OPTIMISTIC LOCK VERSIONING</span>
-        </div>
-        <span id="aggregate-liquidity" class="section-caption font-mono">SYSTEM LIQUIDITY: $0.00</span>
-      </div>
-
-      <div id="accounts-board" class="accounts-grid" aria-live="polite"></div>
-    </section>
-
-    <!-- 3. Interactive Transfer Saga Workbench + Live HTTP/Saga Inspector -->
-    <section class="section-block reveal" aria-labelledby="workbench-heading">
-      <div class="workbench-grid">
-        <!-- Left Panel: Transfer Saga Workbench -->
-        <div class="card panel">
-          <div class="panel-header">
-            <div>
-              <h2 id="workbench-heading" class="panel-title font-serif">Interactive Transfer Saga Workbench</h2>
-            </div>
-            <span class="route-tag font-mono">POST /api/v1/transfers</span>
-          </div>
-
-          <!-- 4 One-Click Demo Scenario Buttons -->
-          <div class="demo-section-label">
-            <span>One-Click Distributed Verification Scenarios</span>
-            <span class="font-mono">KEYS 1–4</span>
-          </div>
-
-          <div class="demo-grid">
-            <button id="demo-btn-settled" type="button" class="demo-btn">
-              <span class="demo-btn-top">
-                <span class="badge badge-green font-mono">201 CREATED</span>
-                <kbd>1</kbd>
-              </span>
-              <span class="demo-btn-title">Execute Settled Transfer (201)</span>
-              <span class="demo-btn-desc">Reserve -&gt; Escrow -&gt; Settle with fresh Idempotency-Key &amp; fencing token.</span>
-            </button>
-
-            <button id="demo-btn-replay" type="button" class="demo-btn">
-              <span class="demo-btn-top">
-                <span class="badge badge-blue font-mono">200 REPLAY</span>
-                <kbd>2</kbd>
-              </span>
-              <span class="demo-btn-title">Replay Same Idempotency-Key (200 Zero Double-Spend)</span>
-              <span class="demo-btn-desc">Re-submits identical SHA-256 payload; returns cached Saga without re-debiting.</span>
-            </button>
-
-            <button id="demo-btn-conflict" type="button" class="demo-btn">
-              <span class="demo-btn-top">
-                <span class="badge badge-yellow font-mono">409 CONFLICT</span>
-                <kbd>3</kbd>
-              </span>
-              <span class="demo-btn-title">Reuse Key w/ Different Amount (409 Conflict)</span>
-              <span class="demo-btn-desc">Triggers SHA-256 fingerprint mismatch guard (ERR-409-IDEMPOTENCY-CONFLICT).</span>
-            </button>
-
-            <button id="demo-btn-crash" type="button" class="demo-btn">
-              <span class="demo-btn-top">
-                <span class="badge badge-red font-mono">COMPENSATED + DLQ</span>
-                <kbd>4</kbd>
-              </span>
-              <span class="demo-btn-title">Simulate Settlement Crash (Compensated + DLQ)</span>
-              <span class="demo-btn-desc">Fails Phase 2; posts append-only reversal entries &amp; archives DLQ record.</span>
-            </button>
-          </div>
-
-          <!-- Structured Transfer Command Form -->
-          <form id="transfer-form" novalidate>
-            <div class="form-grid">
-              <div class="form-field">
-                <div class="field-label-row">
-                  <label for="input-source-account" class="field-label">Source Account</label>
-                  <span class="field-hint font-mono">DEBIT</span>
-                </div>
-                <select id="input-source-account" class="select-control font-mono" required></select>
-              </div>
-
-              <div class="form-field">
-                <div class="field-label-row">
-                  <label for="input-dest-account" class="field-label">Destination Account</label>
-                  <span class="field-hint font-mono">CREDIT</span>
-                </div>
-                <select id="input-dest-account" class="select-control font-mono" required></select>
-              </div>
-
-              <div class="form-field">
-                <div class="field-label-row">
-                  <label for="input-amount-usd" class="field-label">Amount (USD)</label>
-                  <span class="field-hint font-mono">EXACT INTEGER CENTS</span>
-                </div>
-                <div class="amount-input-wrap">
-                  <span class="amount-prefix font-mono">$</span>
-                  <input
-                    id="input-amount-usd"
-                    type="text"
-                    inputmode="decimal"
-                    autocomplete="off"
-                    spellcheck="false"
-                    value="1250.00"
-                    placeholder="0.00"
-                    class="input-control font-mono"
-                    aria-describedby="amount-validation-msg"
-                  />
-                  <span class="amount-suffix font-mono">USD</span>
-                </div>
-                <div id="amount-validation-msg" class="validation-msg font-mono" aria-live="polite">
-                  Exact Minor Units: 125,000 cents
-                </div>
-              </div>
-
-              <div class="form-field">
-                <div class="field-label-row">
-                  <label for="input-idempotency-key" class="field-label">Idempotency-Key</label>
-                  <span class="field-hint font-mono">HEADER + BODY</span>
-                </div>
-                <div class="input-inline-row">
-                  <input
-                    id="input-idempotency-key"
-                    type="text"
-                    autocomplete="off"
-                    spellcheck="false"
-                    class="input-control font-mono"
-                    placeholder="idem-tx-001"
-                    aria-describedby="key-validation-msg"
-                  />
-                  <button id="btn-gen-key" type="button" class="btn btn-secondary btn-compact font-mono">
-                    New Key
-                  </button>
-                </div>
-                <div id="key-validation-msg" class="validation-msg font-mono" aria-live="polite">
-                  Uniquely scopes retry safety per transfer command.
-                </div>
-              </div>
-
-              <div class="form-field full-span">
-                <div class="fingerprint-box">
-                  <div class="fingerprint-label font-mono">
-                    <span>Live Canonical SHA-256 Request Fingerprint</span>
-                    <span id="fingerprint-match-status">NEW COMMAND</span>
-                  </div>
-                  <div id="live-fingerprint-hash" class="fingerprint-hash font-mono">-</div>
-                </div>
-              </div>
-
-              <div class="form-field full-span">
-                <label id="failure-checkbox-panel" for="input-simulate-failure" class="checkbox-panel">
-                  <input id="input-simulate-failure" type="checkbox" />
-                  <span>
-                    <span class="checkbox-title">Simulate Settlement Failure (Trigger Compensation + DLQ)</span>
-                    <span class="checkbox-desc">
-                      Reserves funds into ACC-ESCROW-CLEARING, injects a Phase-2 settlement failure, posts compensating append-only ledger entries restoring source balance, and writes a DeadLetterEvent to ledger.transfers.dlq.
-                    </span>
-                  </span>
-                </label>
-              </div>
-            </div>
-
-            <div class="form-actions">
-              <div class="form-actions-left">
-                <button id="btn-submit-transfer" type="submit" class="btn btn-primary">
-                  Dispatch Transfer Saga
-                </button>
-                <button id="btn-swap-accounts" type="button" class="btn btn-secondary btn-compact">
-                  Swap Accounts
-                </button>
-                <button id="btn-test-overdraft" type="button" class="btn btn-secondary btn-compact font-mono">
-                  Test Overdraft (422)
-                </button>
-              </div>
-              <span id="form-account-error" class="validation-msg font-mono" aria-live="polite"></span>
-            </div>
-          </form>
-        </div>
-
-        <!-- Right Panel: Live HTTP Response & Saga State Inspector -->
-        <aside class="card panel" aria-labelledby="inspector-heading">
-          <div class="panel-header">
-            <div>
-              <h2 id="inspector-heading" class="panel-title font-serif">HTTP &amp; Saga State Inspector</h2>
-            </div>
-            <span id="inspector-http-badge" class="badge badge-neutral font-mono">IDLE · READY</span>
-          </div>
-
-          <!-- Saga Lifecycle Rail -->
-          <div id="saga-stepper" class="saga-stepper font-mono" aria-label="Saga State Progression">
-            <span class="step-node">INITIATED</span>
-            <span class="step-sep">-&gt;</span>
-            <span class="step-node">RESERVED</span>
-            <span class="step-sep">-&gt;</span>
-            <span class="step-node">SETTLED</span>
-          </div>
-
-          <div id="inspector-banner" class="inspector-banner">
-            Execute a custom transfer or select one of the four verification scenarios to inspect HTTP status codes, fencing tokens, idempotent replay semantics, and cryptographic request fingerprints.
-          </div>
-
-          <div class="meta-grid">
-            <div class="meta-cell">
-              <span class="meta-key font-mono">HTTP Status</span>
-              <span id="insp-http-status" class="meta-val font-mono">-</span>
-            </div>
-            <div class="meta-cell">
-              <span class="meta-key font-mono">Saga Status</span>
-              <span id="insp-saga-status" class="meta-val font-mono">-</span>
-            </div>
-            <div class="meta-cell">
-              <span class="meta-key font-mono">fencing_token</span>
-              <span id="insp-fencing-token" class="meta-val font-mono">-</span>
-            </div>
-            <div class="meta-cell">
-              <span class="meta-key font-mono">idempotent_replay</span>
-              <span id="insp-idempotent-replay" class="meta-val font-mono">-</span>
-            </div>
-            <div class="meta-cell">
-              <span class="meta-key font-mono">saga_id</span>
-              <span id="insp-saga-id" class="meta-val font-mono">-</span>
-            </div>
-            <div class="meta-cell">
-              <span class="meta-key font-mono">idempotency_key</span>
-              <span id="insp-idem-key" class="meta-val font-mono">-</span>
-            </div>
-            <div class="meta-cell full-span">
-              <span class="meta-key font-mono">request_fingerprint (SHA-256)</span>
-              <span id="insp-fingerprint" class="meta-val font-mono">-</span>
-            </div>
-            <div id="insp-conflict-row" class="meta-cell full-span" hidden>
-              <span class="meta-key font-mono">expected_fingerprint vs received_fingerprint</span>
-              <span id="insp-conflict-detail" class="meta-val font-mono">-</span>
-            </div>
-          </div>
-
-          <div class="payload-drawer">
-            <div class="payload-drawer-head font-mono">
-              <span id="insp-payload-title">Protocol Response Envelope (JSON)</span>
-              <button id="btn-copy-json" type="button" class="btn btn-secondary btn-compact font-mono">Copy JSON</button>
-            </div>
-            <pre id="insp-raw-json" class="payload-pre font-mono">{ "status": "awaiting_transfer_command" }</pre>
-          </div>
-        </aside>
-      </div>
-    </section>
-
-    <!-- 4. Transactional Outbox, Kafka Topic Log & Dead-Letter Queue Tabs -->
-    <section class="section-block reveal" aria-labelledby="eventbus-heading">
-      <div class="section-header">
-        <div class="section-title-group">
-          <h2 id="eventbus-heading" class="section-title font-serif">Transactional Outbox, Broker Log &amp; DLQ</h2>
-          <span class="section-caption font-mono">ZERO DUAL-WRITE · AT-LEAST-ONCE RELAY · EFFECTIVELY-ONCE CONSUMERS</span>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="tabs-bar">
-          <div class="tab-list" role="tablist" aria-label="Event Pipeline Views">
-            <button id="tab-btn-outbox" type="button" role="tab" aria-selected="true" aria-controls="tab-panel-outbox" class="tab-btn is-active" data-tab="outbox">
-              <span>Transactional Outbox</span>
-              <span id="tab-count-outbox" class="tab-count font-mono">0</span>
-            </button>
-            <button id="tab-btn-kafka" type="button" role="tab" aria-selected="false" aria-controls="tab-panel-kafka" class="tab-btn" data-tab="kafka">
-              <span>Kafka Topic Log</span>
-              <span id="tab-count-kafka" class="tab-count font-mono">0</span>
-            </button>
-            <button id="tab-btn-dlq" type="button" role="tab" aria-selected="false" aria-controls="tab-panel-dlq" class="tab-btn" data-tab="dlq">
-              <span>Dead-Letter Queue</span>
-              <span id="tab-count-dlq" class="tab-count font-mono">0</span>
-            </button>
-            <button id="tab-btn-sagas" type="button" role="tab" aria-selected="false" aria-controls="tab-panel-sagas" class="tab-btn" data-tab="sagas">
-              <span>Saga Registry</span>
-              <span id="tab-count-sagas" class="tab-count font-mono">0</span>
-            </button>
-          </div>
-          <span id="tab-endpoint-hint" class="section-caption font-mono">GET /api/v1/outbox</span>
-        </div>
-
-        <!-- Tab 1: Transactional Outbox -->
-        <div id="tab-panel-outbox" class="tab-panel is-active" role="tabpanel" aria-labelledby="tab-btn-outbox">
-          <div class="table-wrap">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>Event ID</th>
-                  <th>Aggregate / Saga ID</th>
-                  <th>Topic</th>
-                  <th>Event Type</th>
-                  <th>Status</th>
-                  <th class="col-right">Retries</th>
-                  <th>Published / Created (UTC)</th>
-                </tr>
-              </thead>
-              <tbody id="tbody-outbox"></tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- Tab 2: Kafka Topic Log -->
-        <div id="tab-panel-kafka" class="tab-panel" role="tabpanel" aria-labelledby="tab-btn-kafka">
-          <div class="table-wrap">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>Topic</th>
-                  <th>Partition / Offset</th>
-                  <th>Event ID</th>
-                  <th>Event Type</th>
-                  <th>Payload Summary</th>
-                  <th>Published At (UTC)</th>
-                </tr>
-              </thead>
-              <tbody id="tbody-kafka"></tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- Tab 3: Dead-Letter Queue -->
-        <div id="tab-panel-dlq" class="tab-panel" role="tabpanel" aria-labelledby="tab-btn-dlq">
-          <div class="table-wrap">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>DLQ ID</th>
-                  <th>Source Event ID</th>
-                  <th>Topic</th>
-                  <th>Failure Reason</th>
-                  <th>Diagnostic Payload</th>
-                  <th>Failed At (UTC)</th>
-                </tr>
-              </thead>
-              <tbody id="tbody-dlq"></tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- Tab 4: Saga Registry -->
-        <div id="tab-panel-sagas" class="tab-panel" role="tabpanel" aria-labelledby="tab-btn-sagas">
-          <div class="table-wrap">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>Saga ID</th>
-                  <th>Idempotency-Key</th>
-                  <th>Transfer Route</th>
-                  <th class="col-right">Amount (USD)</th>
-                  <th>Status</th>
-                  <th class="col-right">Fencing Token</th>
-                  <th>Updated At (UTC)</th>
-                </tr>
-              </thead>
-              <tbody id="tbody-sagas"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 5. Immutable Append-Only Double-Entry Ledger Table -->
-    <section class="section-block reveal" aria-labelledby="ledger-heading">
-      <div class="section-header">
-        <div class="section-title-group">
-          <h2 id="ledger-heading" class="section-title font-serif">Immutable Double-Entry Ledger</h2>
-          <span class="badge badge-green font-mono">APPEND-ONLY · ZERO-SUM ENFORCED</span>
-        </div>
-        <div class="ledger-controls">
-          <label for="ledger-tx-filter" class="section-caption font-mono">Filter Tx:</label>
-          <select id="ledger-tx-filter" class="ledger-filter-select font-mono" aria-label="Filter Ledger by Transaction ID">
-            <option value="ALL">ALL TRANSACTIONS</option>
-          </select>
-          <button id="btn-verify-audit" type="button" class="btn btn-secondary btn-compact font-mono">
-            Verify Zero-Sum Audit
-          </button>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="table-wrap">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>entry_id</th>
-                <th>transaction_id</th>
-                <th>account_id</th>
-                <th>direction</th>
-                <th class="col-right">amount</th>
-                <th>entry_type</th>
-                <th>created_at</th>
-              </tr>
-            </thead>
-            <tbody id="tbody-ledger"></tbody>
-            <tfoot>
-              <tr>
-                <td colspan="4" class="font-mono">APPEND-ONLY DOUBLE-ENTRY INTEGRITY TOTALS (VISIBLE SCOPE)</td>
-                <td id="ledger-footer-summary" colspan="3" class="col-right font-mono">
-                  DEBITS $0.00 | CREDITS $0.00 | IMBALANCE $0.00
-                </td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <footer class="editorial-footer">
-      <div class="font-mono">LEDGERCORE DISTRIBUTED · SPEC-02 · DOUBLE-ENTRY SAGA &amp; OUTBOX CONSOLE</div>
-      <div class="font-mono">ZERO-FLOAT MINOR UNITS · SHA-256 IDEMPOTENCY · APPEND-ONLY LEDGER TRIGGERS</div>
-    </footer>
-  </main>
-
-  <script>
-    'use strict';
-
-    /* =========================================================================
-       1. STRICT NUMERIC VALIDATION, INTEGER-CENT FORMATTING & PURE SHA-256
-       ========================================================================= */
-
-    /** @typedef {{ account_id: string, owner_name: string, currency: string, balance_cents: number, status: string, version: number }} AccountRecord */
-    /** @typedef {{ entry_id: string, transaction_id: string, account_id: string, direction: 'DEBIT'|'CREDIT', amount_cents: number, currency: string, entry_type: string, created_at: string }} LedgerEntryRecord */
-    /** @typedef {{ saga_id: string, idempotency_key: string, request_fingerprint: string, source_account_id: string, destination_account_id: string, amount_cents: number, currency: string, status: string, fencing_token: number, failure_reason: string|null, created_at: string, updated_at: string }} SagaRecord */
-    /** @typedef {{ event_id: string, aggregate_id: string, topic: string, event_type: string, payload_json: string, status: string, retry_count: number, created_at: string, published_at: string|null }} OutboxRecord */
-    /** @typedef {{ topic: string, partition: number, offset: number, event_id: string, event_type: string, payload: Object, published_at: string }} KafkaRecord */
-    /** @typedef {{ dlq_id: string, event_id: string, topic: string, reason: string, payload_json: string, failed_at: string }} DlqRecord */
-    /** @typedef {{ total_entries: number, total_debits_cents: number, total_credits_cents: number, imbalance_cents: number, is_balanced: boolean, audited_at: string }} AuditRecord */
-
-    const MAX_TRANSFER_CENTS = 9999999999; // $99,999,999.99 upper safety cap
-    const ESCROW_ACCOUNT_ID = 'ACC-ESCROW-CLEARING';
-    const API_BASE_URL = (
-      (window.location.protocol === 'http:' || window.location.protocol === 'https:') &&
-      window.location.port === '8096'
-    )
-      ? window.location.origin
-      : 'http://127.0.0.1:8096';
-
-    /**
-     * Strictly validates a non-negative finite integer (rejects NaN, booleans, floats, negatives).
-     * @param {unknown} value
-     * @param {number} fallback
-     * @returns {number}
-     */
-    function safeNonNegativeInt(value, fallback) {
-      if (typeof value !== 'number' || !Number.isFinite(value) || Number.isNaN(value)) {
-        return fallback;
-      }
-      const truncated = Math.trunc(value);
-      return truncated >= 0 ? truncated : fallback;
-    }
-
-    /**
-     * Strictly validates a signed finite integer (e.g., imbalance_cents).
-     * @param {unknown} value
-     * @param {number} fallback
-     * @returns {number}
-     */
-    function safeSignedInt(value, fallback) {
-      if (typeof value !== 'number' || !Number.isFinite(value) || Number.isNaN(value)) {
-        return fallback;
-      }
-      return Math.trunc(value);
-    }
-
-    /**
-     * Formats integer cents to exact USD currency string without floating-point arithmetic.
-     * @param {number} cents
-     * @returns {string}
-     */
-    function formatUsdFromCents(cents) {
-      const safe = safeSignedInt(cents, 0);
-      const isNegative = safe < 0;
-      const abs = Math.abs(safe);
-      const whole = Math.floor(abs / 100);
-      const frac = abs % 100;
-      return (isNegative ? '-$' : '$') + whole.toLocaleString('en-US') + '.' + String(frac).padStart(2, '0');
-    }
-
-    /**
-     * Formats integer cents with thousand separators and unit suffix.
-     * @param {number} cents
-     * @returns {string}
-     */
-    function formatCentsLabel(cents) {
-      return safeSignedInt(cents, 0).toLocaleString('en-US') + ' cents';
-    }
-
-    /**
-     * Formats ISO-8601 UTC timestamps compactly for monospaced table columns.
-     * @param {string|null|undefined} isoStr
-     * @returns {string}
-     */
-    function formatTimestampUtc(isoStr) {
-      if (typeof isoStr !== 'string' || !isoStr.trim()) {
-        return '-';
-      }
-      const parsed = new Date(isoStr);
-      if (Number.isNaN(parsed.getTime())) {
-        return isoStr;
-      }
-      const y = parsed.getUTCFullYear();
-      const m = String(parsed.getUTCMonth() + 1).padStart(2, '0');
-      const d = String(parsed.getUTCDate()).padStart(2, '0');
-      const hh = String(parsed.getUTCHours()).padStart(2, '0');
-      const mm = String(parsed.getUTCMinutes()).padStart(2, '0');
-      const ss = String(parsed.getUTCSeconds()).padStart(2, '0');
-      return y + '-' + m + '-' + d + ' ' + hh + ':' + mm + ':' + ss + 'Z';
-    }
-
-    /**
-     * Pure deterministic parser from USD decimal string to exact integer cents.
-     * Never mutates user input; rejects NaN, negative, zero, scientific notation, and >2 decimals.
-     * @param {string} raw
-     * @returns {{ valid: true, cents: number } | { valid: false, error: string }}
-     */
-    function parseUsdAmountToCents(raw) {
-      if (typeof raw !== 'string') {
-        return { valid: false, error: 'Amount must be a numeric USD string.' };
-      }
-      const trimmed = raw.trim();
-      if (trimmed.length === 0) {
-        return { valid: false, error: 'Enter a positive USD amount (e.g., 1250.00).' };
-      }
-      if (trimmed.startsWith('-')) {
-        return { valid: false, error: 'Negative amounts are forbidden by double-entry invariants.' };
-      }
-      if (/^[+]/.test(trimmed) || /[eE]/.test(trimmed) || /NaN|Infinity/i.test(trimmed)) {
-        return { valid: false, error: 'Invalid numeric notation. Enter plain USD digits only (e.g., 250.50).' };
-      }
-      if (/^\d+\.\d{3,}$/.test(trimmed)) {
-        return { valid: false, error: 'Maximum 2 decimal places permitted for exact integer-cent accounting.' };
-      }
-      if (/^\d+\.$/.test(trimmed)) {
-        return { valid: false, error: 'Incomplete decimal value. Specify 1 or 2 cent digits after the decimal point.' };
-      }
-      if (!/^\d+(\.\d{1,2})?$/.test(trimmed)) {
-        return { valid: false, error: 'Invalid USD format. Use digits with optional 2-digit cents (e.g., 1250.00).' };
-      }
-
-      const parts = trimmed.split('.');
-      const wholePart = parts[0];
-      const fracPart = (parts[1] || '').padEnd(2, '0');
-      const wholeInt = Number.parseInt(wholePart, 10);
-      const fracInt = Number.parseInt(fracPart, 10);
-
-      if (!Number.isSafeInteger(wholeInt) || !Number.isSafeInteger(fracInt) || Number.isNaN(wholeInt) || Number.isNaN(fracInt)) {
-        return { valid: false, error: 'Numeric overflow detected while parsing minor units.' };
-      }
-
-      const totalCents = wholeInt * 100 + fracInt;
-      if (!Number.isSafeInteger(totalCents) || Number.isNaN(totalCents)) {
-        return { valid: false, error: 'Amount exceeds safe integer-cent precision boundary.' };
-      }
-      if (totalCents <= 0) {
-        return { valid: false, error: 'Transfer amount must be strictly greater than $0.00 (minimum 1 cent).' };
-      }
-      if (totalCents > MAX_TRANSFER_CENTS) {
-        return { valid: false, error: 'Amount exceeds single-transfer cap ($99,999,999.99).' };
-      }
-      return { valid: true, cents: totalCents };
-    }
-
-    /**
-     * Pure synchronous FIPS 180-4 SHA-256 implementation (works offline and under file://).
-     * Produces lowercase 64-character hex digest identical to Python hashlib.sha256.
-     * @param {string} message
-     * @returns {string}
-     */
-    function sha256Hex(message) {
-      const K = new Uint32Array([
-        0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
-        0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
-        0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
-        0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
-        0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
-        0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
-        0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
-        0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
-      ]);
-
-      const utf8Bytes = new TextEncoder().encode(message);
-      const bitLenHi = Math.floor((utf8Bytes.length * 8) / 0x100000000);
-      const bitLenLo = (utf8Bytes.length * 8) >>> 0;
-
-      const paddedLen = Math.ceil((utf8Bytes.length + 9) / 64) * 64;
-      const padded = new Uint8Array(paddedLen);
-      padded.set(utf8Bytes);
-      padded[utf8Bytes.length] = 0x80;
-
-      const view = new DataView(padded.buffer);
-      view.setUint32(paddedLen - 8, bitLenHi, false);
-      view.setUint32(paddedLen - 4, bitLenLo, false);
-
-      let h0 = 0x6a09e667;
-      let h1 = 0xbb67ae85;
-      let h2 = 0x3c6ef372;
-      let h3 = 0xa54ff53a;
-      let h4 = 0x510e527f;
-      let h5 = 0x9b05688c;
-      let h6 = 0x1f83d9ab;
-      let h7 = 0x5be0cd19;
-
-      const w = new Uint32Array(64);
-
-      for (let offset = 0; offset < paddedLen; offset += 64) {
-        for (let i = 0; i < 16; i += 1) {
-          w[i] = view.getUint32(offset + i * 4, false);
-        }
-        for (let i = 16; i < 64; i += 1) {
-          const s0 = ((w[i - 15] >>> 7) | (w[i - 15] << 25)) ^ ((w[i - 15] >>> 18) | (w[i - 15] << 14)) ^ (w[i - 15] >>> 3);
-          const s1 = ((w[i - 2] >>> 17) | (w[i - 2] << 15)) ^ ((w[i - 2] >>> 19) | (w[i - 2] << 13)) ^ (w[i - 2] >>> 10);
-          w[i] = (w[i - 16] + s0 + w[i - 7] + s1) >>> 0;
-        }
-
-        let a = h0;
-        let b = h1;
-        let c = h2;
-        let d = h3;
-        let e = h4;
-        let f = h5;
-        let g = h6;
-        let h = h7;
-
-        for (let i = 0; i < 64; i += 1) {
-          const S1 = ((e >>> 6) | (e << 26)) ^ ((e >>> 11) | (e << 21)) ^ ((e >>> 25) | (e << 7));
-          const ch = (e & f) ^ ((~e) & g);
-          const temp1 = (h + S1 + ch + K[i] + w[i]) >>> 0;
-          const S0 = ((a >>> 2) | (a << 30)) ^ ((a >>> 13) | (a << 19)) ^ ((a >>> 22) | (a << 10));
-          const maj = (a & b) ^ (a & c) ^ (b & c);
-          const temp2 = (S0 + maj) >>> 0;
-
-          h = g;
-          g = f;
-          f = e;
-          e = (d + temp1) >>> 0;
-          d = c;
-          c = b;
-          b = a;
-          a = (temp1 + temp2) >>> 0;
-        }
-
-        h0 = (h0 + a) >>> 0;
-        h1 = (h1 + b) >>> 0;
-        h2 = (h2 + c) >>> 0;
-        h3 = (h3 + d) >>> 0;
-        h4 = (h4 + e) >>> 0;
-        h5 = (h5 + f) >>> 0;
-        h6 = (h6 + g) >>> 0;
-        h7 = (h7 + h) >>> 0;
-      }
-
-      const words = [h0, h1, h2, h3, h4, h5, h6, h7];
-      return words.map(function (word) {
-        return word.toString(16).padStart(8, '0');
-      }).join('');
-    }
-
-    /**
-     * Computes canonical SHA-256 request fingerprint matching Python TransferCommand.compute_fingerprint.
-     * @param {{ source_account_id: string, destination_account_id: string, amount_cents: number, currency: string, simulate_settlement_failure: boolean }} payload
-     * @returns {string}
-     */
-    function computeCanonicalFingerprint(payload) {
-      const canonical = JSON.stringify({
-        amount_cents: payload.amount_cents,
-        currency: payload.currency,
-        destination_account_id: payload.destination_account_id,
-        simulate_settlement_failure: Boolean(payload.simulate_settlement_failure),
-        source_account_id: payload.source_account_id,
-      });
-      return sha256Hex(canonical);
-    }
-
-    /* =========================================================================
-       2. EMBEDDED STANDALONE LOCAL ENGINE (DETERMINISTIC DOMAIN REPLICA)
-       ========================================================================= */
-
-    class StandaloneLedgerEngine {
-      constructor() {
-        this.reset();
-      }
-
-      reset() {
-        /** @type {Map<string, AccountRecord>} */
-        this.accounts = new Map();
-        const seeded = [
-          { account_id: 'ACC-TREASURY-001', owner_name: 'Core Treasury Reserve', currency: 'USD', balance_cents: 50000000, status: 'ACTIVE', version: 1 },
-          { account_id: 'ACC-MERCHANT-002', owner_name: 'Meridian Marketplace Settlement', currency: 'USD', balance_cents: 12500000, status: 'ACTIVE', version: 1 },
-          { account_id: 'ACC-CUSTOMER-003', owner_name: 'Enterprise Client Wallet', currency: 'USD', balance_cents: 4850000, status: 'ACTIVE', version: 1 },
-          { account_id: 'ACC-SETTLEMENT-004', owner_name: 'Clearing Partner Bank', currency: 'USD', balance_cents: 8500000, status: 'ACTIVE', version: 1 },
-          { account_id: 'ACC-ESCROW-CLEARING', owner_name: 'Saga Escrow Clearing Pool', currency: 'USD', balance_cents: 0, status: 'ACTIVE', version: 1 },
-        ];
-        seeded.forEach((acc) => {
-          this.accounts.set(acc.account_id, Object.assign({}, acc));
-        });
-
-        /** @type {Map<string, { idempotency_key: string, request_fingerprint: string, saga_id: string }>} */
-        this.idempotencyRecords = new Map();
-        /** @type {Map<string, SagaRecord>} */
-        this.sagasById = new Map();
-        /** @type {SagaRecord[]} */
-        this.sagasList = [];
-        /** @type {LedgerEntryRecord[]} */
-        this.ledgerEntries = [];
-        /** @type {OutboxRecord[]} */
-        this.outboxEvents = [];
-        /** @type {KafkaRecord[]} */
-        this.kafkaEvents = [];
-        /** @type {DlqRecord[]} */
-        this.dlqEvents = [];
-
-        /** @type {Map<string, number>} */
-        this.partitionOffsets = new Map();
-        /** @type {Set<string>} */
-        this.consumedEventKeys = new Set();
-
-        this.fencingCounter = 0;
-        this.idSequence = 0;
-      }
-
-      /**
-       * Generates a deterministic-style unique ID matching SQLite repository prefixes.
-       * @param {string} prefix
-       * @returns {string}
-       */
-      nextId(prefix) {
-        this.idSequence += 1;
-        const hash = sha256Hex(prefix + ':' + String(this.idSequence) + ':' + String(this.fencingCounter));
-        return prefix + '-' + hash.slice(0, 16);
-      }
-
-      /** @returns {AccountRecord[]} */
-      listAccounts() {
-        return Array.from(this.accounts.values())
-          .sort((a, b) => a.account_id.localeCompare(b.account_id))
-          .map((acc) => Object.assign({}, acc));
-      }
-
-      /** @returns {SagaRecord[]} */
-      listSagas() {
-        return this.sagasList.slice().reverse().map((s) => Object.assign({}, s));
-      }
-
-      /** @returns {LedgerEntryRecord[]} */
-      listLedgerEntries() {
-        return this.ledgerEntries.slice().reverse().map((e) => Object.assign({}, e));
-      }
-
-      /** @returns {OutboxRecord[]} */
-      listOutboxEvents() {
-        return this.outboxEvents.slice().reverse().map((e) => Object.assign({}, e));
-      }
-
-      /** @returns {KafkaRecord[]} */
-      listKafkaEvents() {
-        return this.kafkaEvents.slice().map((e) => Object.assign({}, e));
-      }
-
-      /** @returns {DlqRecord[]} */
-      listDlqEvents() {
-        return this.dlqEvents.slice().reverse().map((e) => Object.assign({}, e));
-      }
-
-      /** @returns {AuditRecord} */
-      computeAudit() {
-        let totalDebits = 0;
-        let totalCredits = 0;
-        for (let i = 0; i < this.ledgerEntries.length; i += 1) {
-          const entry = this.ledgerEntries[i];
-          if (entry.direction === 'DEBIT') {
-            totalDebits += entry.amount_cents;
-          } else if (entry.direction === 'CREDIT') {
-            totalCredits += entry.amount_cents;
+    <script>
+      (function () {
+        const state = {
+          accounts: [],
+          activeSourceId: "",
+          sagas: [],
+          audit: { imbalance_cents: 0, total_entries: 0 },
+          outbox: [],
+          dlq: [],
+        };
+
+        const els = {
+          owner: document.getElementById("lc-active-owner"),
+          balance: document.getElementById("lc-active-balance"),
+          pills: document.getElementById("lc-account-pills"),
+          dest: document.getElementById("lc-dest-select"),
+          amount: document.getElementById("lc-amount-input"),
+          feedback: document.getElementById("lc-feedback-box"),
+          txList: document.getElementById("lc-tx-list"),
+          integrity: document.getElementById("lc-balance-integrity"),
+          archBackdrop: document.getElementById("lc-arch-backdrop"),
+          archBody: document.getElementById("lc-arch-body"),
+        };
+
+        function el(tag, props, children) {
+          const node = document.createElement(tag);
+          if (props) {
+            for (const [k, v] of Object.entries(props)) {
+              if (k === "className") node.className = v;
+              else if (k === "textContent") node.textContent = v;
+              else if (k.startsWith("on") && typeof v === "function") node.addEventListener(k.slice(2).toLowerCase(), v);
+              else node.setAttribute(k, String(v));
+            }
           }
-        }
-        const imbalance = totalDebits - totalCredits;
-        return {
-          total_entries: this.ledgerEntries.length,
-          total_debits_cents: totalDebits,
-          total_credits_cents: totalCredits,
-          imbalance_cents: imbalance,
-          is_balanced: imbalance === 0,
-          audited_at: new Date().toISOString(),
-        };
-      }
-
-      /**
-       * Relays an outbox event into the partitioned in-memory Kafka log with consumer deduplication.
-       * @param {OutboxRecord} outboxEvent
-       */
-      relayOutboxToKafka(outboxEvent) {
-        const parsedPayload = JSON.parse(outboxEvent.payload_json);
-        const partitionKey = String(parsedPayload.aggregate_id || parsedPayload.saga_id || outboxEvent.event_id);
-        const digestHex = sha256Hex(partitionKey);
-        const partition = Number.parseInt(digestHex.slice(0, 8), 16) % 4;
-        const offsetKey = outboxEvent.topic + ':' + String(partition);
-        const offset = this.partitionOffsets.get(offsetKey) || 0;
-        this.partitionOffsets.set(offsetKey, offset + 1);
-
-        const publishedAt = new Date().toISOString();
-        this.kafkaEvents.push({
-          topic: outboxEvent.topic,
-          partition: partition,
-          offset: offset,
-          event_id: outboxEvent.event_id,
-          event_type: outboxEvent.event_type,
-          payload: parsedPayload,
-          published_at: publishedAt,
-        });
-
-        this.consumedEventKeys.add('ledger-audit-consumer:' + outboxEvent.event_id);
-        outboxEvent.status = 'PUBLISHED';
-        outboxEvent.published_at = publishedAt;
-      }
-
-      /**
-       * Executes the full distributed transfer Saga (idempotency -> lock fencing -> reserve -> settle/compensate).
-       * @param {{ idempotency_key: string, source_account_id: string, destination_account_id: string, amount_cents: number, currency: string, simulate_settlement_failure: boolean }} command
-       */
-      executeTransfer(command) {
-        const now = new Date().toISOString();
-        const idemKey = String(command.idempotency_key || '').trim();
-        if (!idemKey) {
-          return {
-            httpStatus: 400,
-            body: {
-              code: 'ERR-400-INVALID-TRANSFER',
-              message: "Field 'idempotency_key' must be a non-empty string.",
-              details: { field: 'idempotency_key' },
-            },
-          };
-        }
-
-        if (command.source_account_id === command.destination_account_id) {
-          return {
-            httpStatus: 400,
-            body: {
-              code: 'ERR-400-INVALID-TRANSFER',
-              message: 'Source and destination accounts must be distinct.',
-              details: {
-                source_account_id: command.source_account_id,
-                destination_account_id: command.destination_account_id,
-              },
-            },
-          };
-        }
-
-        if (typeof command.amount_cents !== 'number' || !Number.isInteger(command.amount_cents) || command.amount_cents <= 0) {
-          return {
-            httpStatus: 400,
-            body: {
-              code: 'ERR-400-INVALID-TRANSFER',
-              message: "Field 'amount_cents' must be a positive exact integer.",
-              details: { amount_cents: command.amount_cents },
-            },
-          };
-        }
-
-        const fingerprint = computeCanonicalFingerprint({
-          source_account_id: command.source_account_id,
-          destination_account_id: command.destination_account_id,
-          amount_cents: command.amount_cents,
-          currency: command.currency || 'USD',
-          simulate_settlement_failure: Boolean(command.simulate_settlement_failure),
-        });
-
-        // 1. Idempotency Guard (Replay vs Payload Conflict)
-        const existingIdem = this.idempotencyRecords.get(idemKey);
-        if (existingIdem) {
-          if (existingIdem.request_fingerprint === fingerprint) {
-            const cachedSaga = this.sagasById.get(existingIdem.saga_id);
-            return {
-              httpStatus: 200,
-              body: {
-                saga: Object.assign({}, cachedSaga),
-                idempotent_replay: true,
-                message: 'Idempotent replay accepted: returned persisted Saga with zero duplicate postings.',
-              },
-            };
+          if (Array.isArray(children)) {
+            for (const c of children) {
+              if (typeof c === "string") node.appendChild(document.createTextNode(c));
+              else if (c) node.appendChild(c);
+            }
           }
-          return {
-            httpStatus: 409,
-            body: {
-              code: 'ERR-409-IDEMPOTENCY-CONFLICT',
-              message: "Idempotency key '" + idemKey + "' was already used with a different request payload.",
-              details: {
-                idempotency_key: idemKey,
-                expected_fingerprint: existingIdem.request_fingerprint,
-                received_fingerprint: fingerprint,
-              },
-            },
-          };
+          return node;
         }
 
-        // 2. Account Existence & Overdraft Validation
-        const source = this.accounts.get(command.source_account_id);
-        const dest = this.accounts.get(command.destination_account_id);
-        const escrow = this.accounts.get(ESCROW_ACCOUNT_ID);
-
-        if (!source) {
-          return {
-            httpStatus: 404,
-            body: {
-              code: 'ERR-404-ACCOUNT-NOT-FOUND',
-              message: "Account '" + command.source_account_id + "' was not found.",
-              details: { account_id: command.source_account_id },
-            },
-          };
-        }
-        if (!dest || !escrow) {
-          const missingId = !dest ? command.destination_account_id : ESCROW_ACCOUNT_ID;
-          return {
-            httpStatus: 404,
-            body: {
-              code: 'ERR-404-ACCOUNT-NOT-FOUND',
-              message: "Account '" + missingId + "' was not found.",
-              details: { account_id: missingId },
-            },
-          };
+        function formatMoney(cents) {
+          return "$" + (cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " USD";
         }
 
-        if (source.balance_cents < command.amount_cents) {
-          return {
-            httpStatus: 422,
-            body: {
-              code: 'ERR-422-INSUFFICIENT-FUNDS',
-              message: "Account '" + source.account_id + "' has insufficient funds: available=" + source.balance_cents + ' cents, requested=' + command.amount_cents + ' cents.',
-              details: {
-                account_id: source.account_id,
-                available_cents: source.balance_cents,
-                requested_cents: command.amount_cents,
-              },
-            },
-          };
+        function showFeedback(tone, text) {
+          els.feedback.setAttribute("data-tone", tone);
+          els.feedback.textContent = text;
         }
 
-        // 3. Monotonic Distributed Lock Fencing Token
-        this.fencingCounter += 1;
-        const fencingToken = this.fencingCounter;
-        const sagaId = this.nextId('SAGA');
-
-        // 4. Phase 1: Atomic Reserve (DEBIT source, CREDIT escrow + Outbox)
-        const reserveDebit = {
-          entry_id: this.nextId('ENT'),
-          transaction_id: sagaId,
-          account_id: source.account_id,
-          direction: /** @type {'DEBIT'} */ ('DEBIT'),
-          amount_cents: command.amount_cents,
-          currency: 'USD',
-          entry_type: 'TRANSFER_RESERVE',
-          created_at: now,
-        };
-        const reserveCredit = {
-          entry_id: this.nextId('ENT'),
-          transaction_id: sagaId,
-          account_id: escrow.account_id,
-          direction: /** @type {'CREDIT'} */ ('CREDIT'),
-          amount_cents: command.amount_cents,
-          currency: 'USD',
-          entry_type: 'TRANSFER_RESERVE',
-          created_at: now,
-        };
-
-        source.balance_cents -= command.amount_cents;
-        source.version += 1;
-        escrow.balance_cents += command.amount_cents;
-        escrow.version += 1;
-
-        this.ledgerEntries.push(reserveDebit, reserveCredit);
-
-        /** @type {SagaRecord} */
-        const saga = {
-          saga_id: sagaId,
-          idempotency_key: idemKey,
-          request_fingerprint: fingerprint,
-          source_account_id: source.account_id,
-          destination_account_id: dest.account_id,
-          amount_cents: command.amount_cents,
-          currency: 'USD',
-          status: 'RESERVED',
-          fencing_token: fencingToken,
-          failure_reason: null,
-          created_at: now,
-          updated_at: now,
-        };
-
-        this.sagasById.set(sagaId, saga);
-        this.sagasList.push(saga);
-        this.idempotencyRecords.set(idemKey, {
-          idempotency_key: idemKey,
-          request_fingerprint: fingerprint,
-          saga_id: sagaId,
-        });
-
-        const reserveOutbox = {
-          event_id: this.nextId('EVT'),
-          aggregate_id: sagaId,
-          topic: 'ledger.transfers.reserved',
-          event_type: 'TransferFundsReserved',
-          payload_json: JSON.stringify({
-            aggregate_id: sagaId,
-            saga_id: sagaId,
-            idempotency_key: idemKey,
-            source_account_id: source.account_id,
-            destination_account_id: dest.account_id,
-            escrow_account_id: escrow.account_id,
-            amount_cents: command.amount_cents,
-            currency: 'USD',
-            fencing_token: fencingToken,
-            status: 'RESERVED',
-            entry_ids: [reserveDebit.entry_id, reserveCredit.entry_id],
-          }),
-          status: 'PENDING',
-          retry_count: 0,
-          created_at: now,
-          published_at: null,
-        };
-        this.outboxEvents.push(reserveOutbox);
-        this.relayOutboxToKafka(reserveOutbox);
-
-        // 5. Phase 2: Settle OR Compensate + DLQ
-        const phase2Time = new Date().toISOString();
-        if (!command.simulate_settlement_failure) {
-          const settleDebit = {
-            entry_id: this.nextId('ENT'),
-            transaction_id: sagaId,
-            account_id: escrow.account_id,
-            direction: /** @type {'DEBIT'} */ ('DEBIT'),
-            amount_cents: command.amount_cents,
-            currency: 'USD',
-            entry_type: 'TRANSFER_SETTLE',
-            created_at: phase2Time,
-          };
-          const settleCredit = {
-            entry_id: this.nextId('ENT'),
-            transaction_id: sagaId,
-            account_id: dest.account_id,
-            direction: /** @type {'CREDIT'} */ ('CREDIT'),
-            amount_cents: command.amount_cents,
-            currency: 'USD',
-            entry_type: 'TRANSFER_SETTLE',
-            created_at: phase2Time,
-          };
-
-          escrow.balance_cents -= command.amount_cents;
-          escrow.version += 1;
-          dest.balance_cents += command.amount_cents;
-          dest.version += 1;
-
-          this.ledgerEntries.push(settleDebit, settleCredit);
-          saga.status = 'SETTLED';
-          saga.updated_at = phase2Time;
-
-          const settleOutbox = {
-            event_id: this.nextId('EVT'),
-            aggregate_id: sagaId,
-            topic: 'ledger.transfers.settled',
-            event_type: 'TransferSettled',
-            payload_json: JSON.stringify({
-              aggregate_id: sagaId,
-              saga_id: sagaId,
-              idempotency_key: idemKey,
-              source_account_id: source.account_id,
-              destination_account_id: dest.account_id,
-              escrow_account_id: escrow.account_id,
-              amount_cents: command.amount_cents,
-              currency: 'USD',
-              fencing_token: fencingToken,
-              status: 'SETTLED',
-              entry_ids: [settleDebit.entry_id, settleCredit.entry_id],
-            }),
-            status: 'PENDING',
-            retry_count: 0,
-            created_at: phase2Time,
-            published_at: null,
-          };
-          this.outboxEvents.push(settleOutbox);
-          this.relayOutboxToKafka(settleOutbox);
-
-          return {
-            httpStatus: 201,
-            body: {
-              saga: Object.assign({}, saga),
-              idempotent_replay: false,
-              ledger_entries: [reserveDebit, reserveCredit, settleDebit, settleCredit],
-              outbox_events: [Object.assign({}, reserveOutbox), Object.assign({}, settleOutbox)],
-            },
-          };
-        }
-
-        // Phase 2 Failure Injection -> Compensating Double-Entry Reversal + DLQ
-        const failureReason = 'Simulated downstream settlement gateway crash; automatic Saga compensation executed.';
-        const compDebit = {
-          entry_id: this.nextId('ENT'),
-          transaction_id: sagaId,
-          account_id: escrow.account_id,
-          direction: /** @type {'DEBIT'} */ ('DEBIT'),
-          amount_cents: command.amount_cents,
-          currency: 'USD',
-          entry_type: 'SAGA_COMPENSATION',
-          created_at: phase2Time,
-        };
-        const compCredit = {
-          entry_id: this.nextId('ENT'),
-          transaction_id: sagaId,
-          account_id: source.account_id,
-          direction: /** @type {'CREDIT'} */ ('CREDIT'),
-          amount_cents: command.amount_cents,
-          currency: 'USD',
-          entry_type: 'SAGA_COMPENSATION',
-          created_at: phase2Time,
-        };
-
-        escrow.balance_cents -= command.amount_cents;
-        escrow.version += 1;
-        source.balance_cents += command.amount_cents;
-        source.version += 1;
-
-        this.ledgerEntries.push(compDebit, compCredit);
-        saga.status = 'COMPENSATED';
-        saga.failure_reason = failureReason;
-        saga.updated_at = phase2Time;
-
-        const compPayloadJson = JSON.stringify({
-          aggregate_id: sagaId,
-          saga_id: sagaId,
-          idempotency_key: idemKey,
-          source_account_id: source.account_id,
-          destination_account_id: dest.account_id,
-          escrow_account_id: escrow.account_id,
-          amount_cents: command.amount_cents,
-          currency: 'USD',
-          fencing_token: fencingToken,
-          status: 'COMPENSATED',
-          failure_reason: failureReason,
-          entry_ids: [compDebit.entry_id, compCredit.entry_id],
-        });
-
-        const compOutbox = {
-          event_id: this.nextId('EVT'),
-          aggregate_id: sagaId,
-          topic: 'ledger.transfers.compensated',
-          event_type: 'TransferCompensated',
-          payload_json: compPayloadJson,
-          status: 'PENDING',
-          retry_count: 0,
-          created_at: phase2Time,
-          published_at: null,
-        };
-        this.outboxEvents.push(compOutbox);
-        this.relayOutboxToKafka(compOutbox);
-
-        const dlqEvent = {
-          dlq_id: this.nextId('DLQ'),
-          event_id: compOutbox.event_id,
-          topic: 'ledger.transfers.dlq',
-          reason: failureReason,
-          payload_json: compPayloadJson,
-          failed_at: phase2Time,
-        };
-        this.dlqEvents.push(dlqEvent);
-
-        return {
-          httpStatus: 201,
-          body: {
-            saga: Object.assign({}, saga),
-            idempotent_replay: false,
-            dlq_event: Object.assign({}, dlqEvent),
-            ledger_entries: [reserveDebit, reserveCredit, compDebit, compCredit],
-            outbox_events: [Object.assign({}, reserveOutbox), Object.assign({}, compOutbox)],
-          },
-        };
-      }
-    }
-
-    /* =========================================================================
-       3. DUAL-MODE TRANSPORT CLIENT (CONNECTED API <-> STANDALONE ENGINE)
-       ========================================================================= */
-
-    /**
-     * Extracts array payloads defensively from either bare arrays or wrapped API envelopes.
-     * @param {unknown} data
-     * @param {string[]} keys
-     * @returns {Array<Object>}
-     */
-    function unwrapArray(data, keys) {
-      if (Array.isArray(data)) {
-        return data;
-      }
-      if (data && typeof data === 'object') {
-        for (let i = 0; i < keys.length; i += 1) {
-          const candidate = /** @type {Record<string, unknown>} */ (data)[keys[i]];
-          if (Array.isArray(candidate)) {
-            return candidate;
-          }
-        }
-      }
-      return [];
-    }
-
-    /**
-     * Performs a fetch request with an explicit AbortController timeout.
-     * @param {string} url
-     * @param {RequestInit} [options]
-     * @param {number} [timeoutMs]
-     * @returns {Promise<Response>}
-     */
-    async function fetchWithTimeout(url, options, timeoutMs) {
-      const controller = new AbortController();
-      const ms = typeof timeoutMs === 'number' && timeoutMs > 0 ? timeoutMs : 2500;
-      const timerId = window.setTimeout(function () {
-        controller.abort();
-      }, ms);
-      try {
-        const merged = Object.assign({}, options || {}, { signal: controller.signal });
-        return await window.fetch(url, merged);
-      } finally {
-        window.clearTimeout(timerId);
-      }
-    }
-
-    const localEngine = new StandaloneLedgerEngine();
-
-    const appState = {
-      /** @type {'ONLINE'|'STANDALONE'} */
-      mode: 'STANDALONE',
-      busy: false,
-      activeTab: 'outbox',
-      ledgerFilterTx: 'ALL',
-      /** @type {AccountRecord[]} */
-      accounts: [],
-      /** @type {Record<string, number>} */
-      previousBalances: {},
-      /** @type {Record<string, number>} */
-      lastBalanceDeltas: {},
-      /** @type {SagaRecord[]} */
-      sagas: [],
-      /** @type {LedgerEntryRecord[]} */
-      ledgerEntries: [],
-      /** @type {OutboxRecord[]} */
-      outboxEvents: [],
-      /** @type {KafkaRecord[]} */
-      kafkaEvents: [],
-      /** @type {DlqRecord[]} */
-      dlqEvents: [],
-      /** @type {AuditRecord} */
-      audit: {
-        total_entries: 0,
-        total_debits_cents: 0,
-        total_credits_cents: 0,
-        imbalance_cents: 0,
-        is_balanced: true,
-        audited_at: '',
-      },
-      /** @type {{ key: string, source: string, dest: string, amountUsd: string, simulateFailure: boolean } | null} */
-      lastDemoContext: null,
-      demoCounter: 0,
-      lastRawResponseJson: '{ "status": "awaiting_transfer_command" }',
-    };
-
-    /**
-     * Probes the backend API and loads all domain snapshots; falls back cleanly to local engine if offline.
-     * @param {boolean} [recordDeltas]
-     */
-    async function refreshAllState(recordDeltas) {
-      const prevMap = {};
-      appState.accounts.forEach(function (acc) {
-        prevMap[acc.account_id] = acc.balance_cents;
-      });
-
-      let connected = false;
-      try {
-        const probeRes = await fetchWithTimeout(API_BASE_URL + '/api/v1/accounts', { method: 'GET' }, 1800);
-        if (probeRes.ok) {
-          const accountsData = await probeRes.json();
-          const [sagasRes, ledgerRes, auditRes, outboxRes, kafkaRes, dlqRes] = await Promise.all([
-            fetchWithTimeout(API_BASE_URL + '/api/v1/sagas', { method: 'GET' }, 2500),
-            fetchWithTimeout(API_BASE_URL + '/api/v1/ledger/entries', { method: 'GET' }, 2500),
-            fetchWithTimeout(API_BASE_URL + '/api/v1/ledger/audit', { method: 'GET' }, 2500),
-            fetchWithTimeout(API_BASE_URL + '/api/v1/outbox', { method: 'GET' }, 2500),
-            fetchWithTimeout(API_BASE_URL + '/api/v1/kafka/events', { method: 'GET' }, 2500),
-            fetchWithTimeout(API_BASE_URL + '/api/v1/dlq', { method: 'GET' }, 2500),
+        async function loadWallet() {
+          const [accRes, sagasRes, audRes, outRes, dlqRes] = await Promise.all([
+            fetch("/api/v1/accounts"),
+            fetch("/api/v1/sagas"),
+            fetch("/api/v1/ledger/audit"),
+            fetch("/api/v1/outbox"),
+            fetch("/api/v1/dlq"),
           ]);
+          const accData = await accRes.json();
+          const sagasData = await sagasRes.json();
+          const audData = await audRes.json();
+          const outData = await outRes.json();
+          const dlqData = await dlqRes.json();
 
-          const sagasJson = sagasRes.ok ? await sagasRes.json() : [];
-          const ledgerJson = ledgerRes.ok ? await ledgerRes.json() : [];
-          const auditJson = auditRes.ok ? await auditRes.json() : {};
-          const outboxJson = outboxRes.ok ? await outboxRes.json() : [];
-          const kafkaJson = kafkaRes.ok ? await kafkaRes.json() : [];
-          const dlqJson = dlqRes.ok ? await dlqRes.json() : [];
+          state.accounts = (accData.accounts || []).filter(function (a) { return a.account_id !== "ACC-ESCROW-CLEARING"; });
+          state.sagas = sagasData.sagas || [];
+          state.audit = audData;
+          state.outbox = outData.events || outData.outbox || [];
+          state.dlq = dlqData.events || dlqData.dlq || [];
 
-          appState.accounts = /** @type {AccountRecord[]} */ (unwrapArray(accountsData, ['accounts', 'items']));
-          appState.sagas = /** @type {SagaRecord[]} */ (unwrapArray(sagasJson, ['sagas', 'items']));
-          appState.ledgerEntries = /** @type {LedgerEntryRecord[]} */ (unwrapArray(ledgerJson, ['entries', 'ledger_entries', 'items']));
-          appState.outboxEvents = /** @type {OutboxRecord[]} */ (unwrapArray(outboxJson, ['events', 'outbox_events', 'items']));
-          appState.kafkaEvents = /** @type {KafkaRecord[]} */ (unwrapArray(kafkaJson, ['events', 'kafka_events', 'items']));
-          appState.dlqEvents = /** @type {DlqRecord[]} */ (unwrapArray(dlqJson, ['events', 'dlq_events', 'dead_letter_events', 'items']));
-
-          const rawAudit = (auditJson && typeof auditJson === 'object' && auditJson.audit && typeof auditJson.audit === 'object')
-            ? auditJson.audit
-            : auditJson;
-          appState.audit = {
-            total_entries: safeNonNegativeInt(rawAudit.total_entries, appState.ledgerEntries.length),
-            total_debits_cents: safeNonNegativeInt(rawAudit.total_debits_cents, 0),
-            total_credits_cents: safeNonNegativeInt(rawAudit.total_credits_cents, 0),
-            imbalance_cents: safeSignedInt(rawAudit.imbalance_cents, 0),
-            is_balanced: typeof rawAudit.is_balanced === 'boolean'
-              ? rawAudit.is_balanced
-              : safeSignedInt(rawAudit.imbalance_cents, 0) === 0,
-            audited_at: typeof rawAudit.audited_at === 'string' ? rawAudit.audited_at : new Date().toISOString(),
-          };
-          connected = true;
-        }
-      } catch (_err) {
-        connected = false;
-      }
-
-      if (connected) {
-        appState.mode = 'ONLINE';
-      } else {
-        appState.mode = 'STANDALONE';
-        appState.accounts = localEngine.listAccounts();
-        appState.sagas = localEngine.listSagas();
-        appState.ledgerEntries = localEngine.listLedgerEntries();
-        appState.outboxEvents = localEngine.listOutboxEvents();
-        appState.kafkaEvents = localEngine.listKafkaEvents();
-        appState.dlqEvents = localEngine.listDlqEvents();
-        appState.audit = localEngine.computeAudit();
-      }
-
-      appState.lastBalanceDeltas = {};
-      if (recordDeltas) {
-        appState.accounts.forEach(function (acc) {
-          if (Object.prototype.hasOwnProperty.call(prevMap, acc.account_id)) {
-            const diff = acc.balance_cents - prevMap[acc.account_id];
-            if (diff !== 0) {
-              appState.lastBalanceDeltas[acc.account_id] = diff;
-            }
+          if (!state.activeSourceId && state.accounts[0]) {
+            state.activeSourceId = state.accounts[0].account_id;
           }
-        });
-      }
+          renderAccounts();
+          renderMovements();
+          renderArchitectureDrawer();
+        }
 
-      renderAll();
-    }
-
-    /**
-     * Submits a transfer command either to the live FastAPI endpoint or to the embedded local engine.
-     * @param {{ idempotency_key: string, source_account_id: string, destination_account_id: string, amount_cents: number, currency: string, simulate_settlement_failure: boolean }} command
-     * @returns {Promise<{ httpStatus: number, body: Record<string, unknown> }>}
-     */
-    async function dispatchTransferCommand(command) {
-      if (appState.mode === 'ONLINE') {
-        try {
-          const url = API_BASE_URL + '/api/v1/transfers';
-          const headers = {
-            'Content-Type': 'application/json',
-            'Idempotency-Key': command.idempotency_key,
-          };
-          let response = await fetchWithTimeout(url, {
-            method: 'POST',
-            headers: headers,
-            body: JSON.stringify(command),
-          }, 4000);
-
-          let parsedBody = {};
-          try {
-            parsedBody = await response.json();
-          } catch (_parseErr) {
-            parsedBody = { message: response.statusText || 'Empty response body' };
+        function renderAccounts() {
+          const active = state.accounts.find(function (a) { return a.account_id === state.activeSourceId; }) || state.accounts[0];
+          if (active) {
+            els.owner.textContent = active.owner_name + " (" + active.account_id + ")";
+            els.balance.textContent = formatMoney(active.balance_cents);
           }
 
-          // Graceful compatibility retry if backend schema uses strict header-only Idempotency-Key
-          if (
-            response.status === 422 &&
-            parsedBody &&
-            Array.isArray(parsedBody.detail) &&
-            parsedBody.detail.some(function (item) {
-              return item && item.type === 'extra_forbidden' && Array.isArray(item.loc) && item.loc.includes('idempotency_key');
-            })
-          ) {
-            const headerOnlyBody = {
-              source_account_id: command.source_account_id,
-              destination_account_id: command.destination_account_id,
-              amount_cents: command.amount_cents,
-              currency: command.currency,
-              simulate_settlement_failure: command.simulate_settlement_failure,
-            };
-            response = await fetchWithTimeout(url, {
-              method: 'POST',
-              headers: headers,
-              body: JSON.stringify(headerOnlyBody),
-            }, 4000);
-            try {
-              parsedBody = await response.json();
-            } catch (_retryParseErr) {
-              parsedBody = { message: response.statusText || 'Empty response body' };
-            }
-          }
+          els.pills.replaceChildren.apply(
+            els.pills,
+            state.accounts.map(function (a) {
+              return el("button", {
+                type: "button",
+                className: "lc-acc-pill",
+                "data-active": a.account_id === state.activeSourceId ? "true" : "false",
+                textContent: a.owner_name.split(" ")[0] + " · " + formatMoney(a.balance_cents),
+                onClick: function () {
+                  state.activeSourceId = a.account_id;
+                  renderAccounts();
+                },
+              });
+            }),
+          );
 
-          return { httpStatus: response.status, body: parsedBody };
-        } catch (_networkErr) {
-          // Automatic fallback to local engine if backend stopped mid-session
-          appState.mode = 'STANDALONE';
-        }
-      }
-
-      return localEngine.executeTransfer(command);
-    }
-
-    /* =========================================================================
-       4. SAFE DOM HELPERS (ZERO HTML STRING INJECTION)
-       ========================================================================= */
-
-    /**
-     * Creates an element with optional className and textContent safely.
-     * @param {string} tag
-     * @param {string} [className]
-     * @param {string} [text]
-     * @returns {HTMLElement}
-     */
-    function el(tag, className, text) {
-      const node = document.createElement(tag);
-      if (className) {
-        node.className = className;
-      }
-      if (typeof text === 'string') {
-        node.textContent = text;
-      }
-      return node;
-    }
-
-    /**
-     * Creates a semantic pill badge using minimalist-skill spot pastels.
-     * @param {string} text
-     * @param {'green'|'blue'|'yellow'|'red'|'neutral'} tone
-     * @returns {HTMLSpanElement}
-     */
-    function createBadge(text, tone) {
-      return /** @type {HTMLSpanElement} */ (el('span', 'badge badge-' + tone + ' font-mono', text));
-    }
-
-    /**
-     * Maps a SagaStatus string to its semantic spot pastel tone.
-     * @param {string} status
-     * @returns {'green'|'blue'|'yellow'|'red'|'neutral'}
-     */
-    function toneForSagaStatus(status) {
-      if (status === 'SETTLED') return 'green';
-      if (status === 'RESERVED' || status === 'INITIATED') return 'blue';
-      if (status === 'COMPENSATED' || status === 'COMPENSATING') return 'yellow';
-      if (status === 'FAILED_DLQ') return 'red';
-      return 'neutral';
-    }
-
-    /**
-     * Maps an OutboxStatus string to its semantic spot pastel tone.
-     * @param {string} status
-     * @returns {'green'|'blue'|'yellow'|'red'|'neutral'}
-     */
-    function toneForOutboxStatus(status) {
-      if (status === 'PUBLISHED') return 'green';
-      if (status === 'PENDING') return 'yellow';
-      if (status === 'DEAD_LETTERED') return 'red';
-      return 'neutral';
-    }
-
-    /**
-     * Renders an empty state row inside a table tbody safely.
-     * @param {HTMLElement} tbody
-     * @param {number} colSpan
-     * @param {string} title
-     * @param {string} subtitle
-     */
-    function renderTableEmptyState(tbody, colSpan, title, subtitle) {
-      const tr = el('tr');
-      const td = el('td');
-      td.setAttribute('colspan', String(colSpan));
-      const box = el('div', 'empty-state');
-      box.appendChild(el('div', 'empty-state-title', title));
-      box.appendChild(el('div', '', subtitle));
-      td.appendChild(box);
-      tr.appendChild(td);
-      tbody.replaceChildren(tr);
-    }
-
-    /* =========================================================================
-       5. RENDER FUNCTIONS FOR ALL CONSOLE SECTIONS
-       ========================================================================= */
-
-    function renderModeHeader() {
-      const modeBadge = document.getElementById('mode-badge');
-      const modeText = document.getElementById('mode-badge-text');
-      const endpointChip = document.getElementById('api-endpoint-chip');
-      const resetBtn = document.getElementById('btn-reset-local');
-
-      if (!modeBadge || !modeText || !endpointChip || !resetBtn) return;
-
-      endpointChip.textContent = API_BASE_URL;
-      if (appState.mode === 'ONLINE') {
-        modeBadge.className = 'badge badge-green font-mono';
-        modeText.textContent = 'ONLINE · API';
-        resetBtn.hidden = true;
-      } else {
-        modeBadge.className = 'badge badge-blue font-mono';
-        modeText.textContent = 'STANDALONE · LOCAL ENGINE';
-        resetBtn.hidden = false;
-      }
-    }
-
-    function renderTelemetryStrip() {
-      const audit = appState.audit;
-      const totalDebits = safeNonNegativeInt(audit.total_debits_cents, 0);
-      const totalCredits = safeNonNegativeInt(audit.total_credits_cents, 0);
-      const imbalance = safeSignedInt(audit.imbalance_cents, totalDebits - totalCredits);
-      const isBalanced = imbalance === 0 && audit.is_balanced !== false;
-
-      const settledCount = appState.sagas.filter(function (s) { return s.status === 'SETTLED'; }).length;
-      const compCount = appState.sagas.filter(function (s) { return s.status === 'COMPENSATED' || s.status === 'FAILED_DLQ'; }).length;
-      const outboxPublished = appState.outboxEvents.filter(function (e) { return e.status === 'PUBLISHED'; }).length;
-      const outboxPending = appState.outboxEvents.filter(function (e) { return e.status === 'PENDING'; }).length;
-      const dlqCount = appState.dlqEvents.length;
-
-      setText('kpi-total-debits', formatUsdFromCents(totalDebits));
-      setText('kpi-total-debits-cents', formatCentsLabel(totalDebits));
-      setText('kpi-total-entries', String(safeNonNegativeInt(audit.total_entries, appState.ledgerEntries.length)) + ' rows');
-
-      setText('kpi-total-credits', formatUsdFromCents(totalCredits));
-      setText('kpi-total-credits-cents', formatCentsLabel(totalCredits));
-
-      setText('kpi-imbalance', formatUsdFromCents(imbalance));
-      setText('kpi-imbalance-cents', formatCentsLabel(imbalance) + ' drift');
-
-      const balBadge = document.getElementById('kpi-balance-badge');
-      if (balBadge) {
-        balBadge.className = 'badge font-mono ' + (isBalanced ? 'badge-green' : 'badge-red');
-        balBadge.textContent = isBalanced ? 'BALANCED' : 'VIOLATION';
-      }
-
-      setText('kpi-active-sagas', String(appState.sagas.length));
-      setText('kpi-sagas-breakdown', String(settledCount) + ' settled · ' + String(compCount) + ' comp.');
-
-      setText('kpi-outbox-published', String(outboxPublished));
-      setText('kpi-outbox-pending', String(outboxPending) + ' pending · ' + String(appState.kafkaEvents.length) + ' kafka');
-
-      setText('kpi-dlq-count', String(dlqCount));
-      const dlqBadge = document.getElementById('kpi-dlq-badge');
-      if (dlqBadge) {
-        dlqBadge.className = 'badge font-mono ' + (dlqCount === 0 ? 'badge-green' : 'badge-red');
-        dlqBadge.textContent = dlqCount === 0 ? 'CLEAR' : 'QUARANTINED';
-      }
-
-      setText('audit-timestamp', 'AUDITED: ' + formatTimestampUtc(audit.audited_at));
-    }
-
-    function renderAccountsBoard() {
-      const board = document.getElementById('accounts-board');
-      const liquidityEl = document.getElementById('aggregate-liquidity');
-      if (!board) return;
-
-      let totalLiquidityCents = 0;
-      const orderedAccounts = appState.accounts.slice().sort(function (a, b) {
-        if (a.account_id === ESCROW_ACCOUNT_ID) return 1;
-        if (b.account_id === ESCROW_ACCOUNT_ID) return -1;
-        return a.account_id.localeCompare(b.account_id);
-      });
-
-      const cards = orderedAccounts.map(function (acc) {
-        const balance = safeNonNegativeInt(acc.balance_cents, 0);
-        const version = safeNonNegativeInt(acc.version, 1);
-        totalLiquidityCents += balance;
-        const isEscrow = acc.account_id === ESCROW_ACCOUNT_ID;
-
-        const card = el('article', 'card card-hover account-card' + (isEscrow ? ' is-escrow' : ''));
-
-        const topSection = el('div');
-        const topRow = el('div', 'account-top');
-        topRow.appendChild(el('span', 'account-id font-mono', acc.account_id));
-        topRow.appendChild(el('span', 'account-version font-mono', 'v' + String(version)));
-        topSection.appendChild(topRow);
-        topSection.appendChild(el('div', 'account-owner', acc.owner_name));
-
-        const midSection = el('div');
-        midSection.appendChild(el('div', 'account-balance font-mono', formatUsdFromCents(balance)));
-
-        const footer = el('div', 'account-footer font-mono');
-        footer.appendChild(el('span', '', formatCentsLabel(balance)));
-
-        const delta = appState.lastBalanceDeltas[acc.account_id];
-        if (typeof delta === 'number' && delta !== 0) {
-          const prefix = delta > 0 ? '+' : '';
-          footer.appendChild(createBadge(prefix + formatUsdFromCents(delta), delta > 0 ? 'green' : 'blue'));
-        } else if (isEscrow) {
-          footer.appendChild(createBadge('CLEARING', 'neutral'));
-        } else {
-          footer.appendChild(el('span', '', (acc.currency || 'USD') + ' · ' + (acc.status || 'ACTIVE')));
-        }
-
-        card.appendChild(topSection);
-        card.appendChild(midSection);
-        card.appendChild(footer);
-        return card;
-      });
-
-      board.replaceChildren.apply(board, cards);
-      if (liquidityEl) {
-        liquidityEl.textContent = 'SYSTEM LIQUIDITY: ' + formatUsdFromCents(totalLiquidityCents) + ' (' + formatCentsLabel(totalLiquidityCents) + ')';
-      }
-
-      syncAccountSelects(orderedAccounts);
-    }
-
-    /**
-     * Synchronizes Source and Destination dropdown options while preserving current user selections.
-     * @param {AccountRecord[]} accounts
-     */
-    function syncAccountSelects(accounts) {
-      const sourceSel = /** @type {HTMLSelectElement|null} */ (document.getElementById('input-source-account'));
-      const destSel = /** @type {HTMLSelectElement|null} */ (document.getElementById('input-dest-account'));
-      if (!sourceSel || !destSel || accounts.length === 0) return;
-
-      const prevSource = sourceSel.value || 'ACC-TREASURY-001';
-      const prevDest = destSel.value || 'ACC-MERCHANT-002';
-
-      function buildOptions(selectedValue) {
-        return accounts.map(function (acc) {
-          const opt = document.createElement('option');
-          opt.value = acc.account_id;
-          opt.textContent = acc.account_id + ' (' + formatUsdFromCents(acc.balance_cents) + ')';
-          if (acc.account_id === selectedValue) {
-            opt.selected = true;
-          }
-          return opt;
-        });
-      }
-
-      sourceSel.replaceChildren.apply(sourceSel, buildOptions(prevSource));
-      destSel.replaceChildren.apply(destSel, buildOptions(prevDest));
-      updateLiveFingerprintPreview();
-    }
-
-    function renderEventTabs() {
-      setText('tab-count-outbox', String(appState.outboxEvents.length));
-      setText('tab-count-kafka', String(appState.kafkaEvents.length));
-      setText('tab-count-dlq', String(appState.dlqEvents.length));
-      setText('tab-count-sagas', String(appState.sagas.length));
-
-      const dlqCountChip = document.getElementById('tab-count-dlq');
-      if (dlqCountChip) {
-        if (appState.dlqEvents.length > 0 && appState.activeTab !== 'dlq') {
-          dlqCountChip.classList.add('has-alert');
-        } else {
-          dlqCountChip.classList.remove('has-alert');
-        }
-      }
-
-      // 1. Transactional Outbox Table
-      const outboxBody = document.getElementById('tbody-outbox');
-      if (outboxBody) {
-        if (appState.outboxEvents.length === 0) {
-          renderTableEmptyState(outboxBody, 7, 'No Transactional Outbox events recorded yet', 'Dispatch a transfer Saga to inspect atomic DB + Outbox event persistence.');
-        } else {
-          const rows = appState.outboxEvents.map(function (evt) {
-            const tr = el('tr');
-            tr.appendChild(el('td', 'font-mono', evt.event_id));
-            tr.appendChild(el('td', 'font-mono', evt.aggregate_id));
-            tr.appendChild(el('td', 'font-mono', evt.topic));
-            tr.appendChild(el('td', 'font-mono', evt.event_type));
-            const statusTd = el('td');
-            statusTd.appendChild(createBadge(evt.status, toneForOutboxStatus(evt.status)));
-            tr.appendChild(statusTd);
-            tr.appendChild(el('td', 'col-right font-mono', String(safeNonNegativeInt(evt.retry_count, 0))));
-            tr.appendChild(el('td', 'font-mono', formatTimestampUtc(evt.published_at || evt.created_at)));
-            return tr;
-          });
-          outboxBody.replaceChildren.apply(outboxBody, rows);
-        }
-      }
-
-      // 2. Kafka Topic Log Table
-      const kafkaBody = document.getElementById('tbody-kafka');
-      if (kafkaBody) {
-        if (appState.kafkaEvents.length === 0) {
-          renderTableEmptyState(kafkaBody, 6, 'Kafka topic log is currently empty', 'Relayed outbox events appear here with deterministic SHA-256 partition assignment and monotonic offsets.');
-        } else {
-          const newestFirst = appState.kafkaEvents.slice().reverse();
-          const rows = newestFirst.map(function (evt) {
-            const tr = el('tr');
-            tr.appendChild(el('td', 'font-mono', evt.topic));
-            const partTd = el('td', 'font-mono');
-            const part = safeNonNegativeInt(evt.partition, 0);
-            const off = safeNonNegativeInt(evt.offset, 0);
-            partTd.appendChild(createBadge('P' + String(part) + ' · #' + String(off), 'blue'));
-            tr.appendChild(partTd);
-            tr.appendChild(el('td', 'font-mono', evt.event_id));
-            tr.appendChild(el('td', 'font-mono', evt.event_type));
-
-            const payload = evt.payload && typeof evt.payload === 'object' ? evt.payload : {};
-            const summaryText =
-              (payload.saga_id ? String(payload.saga_id) : '-') +
-              ' | ' +
-              (typeof payload.amount_cents === 'number' ? formatUsdFromCents(payload.amount_cents) : '-') +
-              ' | fence #' +
-              String(safeNonNegativeInt(payload.fencing_token, 0));
-            tr.appendChild(el('td', 'font-mono', summaryText));
-            tr.appendChild(el('td', 'font-mono', formatTimestampUtc(evt.published_at)));
-            return tr;
-          });
-          kafkaBody.replaceChildren.apply(kafkaBody, rows);
-        }
-      }
-
-      // 3. Dead-Letter Queue Table
-      const dlqBody = document.getElementById('tbody-dlq');
-      if (dlqBody) {
-        if (appState.dlqEvents.length === 0) {
-          renderTableEmptyState(dlqBody, 6, 'Dead-Letter Queue is empty (0 failed settlements)', 'Use Scenario 4 or toggle "Simulate Settlement Failure" to observe Saga compensation and DLQ quarantine.');
-        } else {
-          const rows = appState.dlqEvents.map(function (evt) {
-            const tr = el('tr');
-            const dlqIdTd = el('td', 'font-mono');
-            dlqIdTd.appendChild(createBadge(evt.dlq_id, 'red'));
-            tr.appendChild(dlqIdTd);
-            tr.appendChild(el('td', 'font-mono', evt.event_id));
-            tr.appendChild(el('td', 'font-mono', evt.topic));
-            tr.appendChild(el('td', '', evt.reason));
-
-            let diagSummary = evt.payload_json;
-            try {
-              const parsed = JSON.parse(evt.payload_json);
-              diagSummary = 'saga=' + String(parsed.saga_id || '-') + ' | amount=' + formatUsdFromCents(parsed.amount_cents) + ' | key=' + String(parsed.idempotency_key || '-');
-            } catch (_e) {
-              // Keep raw string if non-JSON
-            }
-            tr.appendChild(el('td', 'font-mono', diagSummary));
-            tr.appendChild(el('td', 'font-mono', formatTimestampUtc(evt.failed_at)));
-            return tr;
-          });
-          dlqBody.replaceChildren.apply(dlqBody, rows);
-        }
-      }
-
-      // 4. Saga Registry Table (clickable to inspect any past Saga)
-      const sagasBody = document.getElementById('tbody-sagas');
-      if (sagasBody) {
-        if (appState.sagas.length === 0) {
-          renderTableEmptyState(sagasBody, 7, 'No Transfer Sagas recorded yet', 'Execute a transfer from the workbench to track distributed Saga state transitions.');
-        } else {
-          const rows = appState.sagas.map(function (saga) {
-            const tr = el('tr', 'is-clickable');
-            tr.title = 'Click to inspect Saga state in the right panel';
-            tr.addEventListener('click', function () {
-              renderInspectorFromSaga(saga, 200, false, 'Loaded persisted Saga snapshot from Saga Registry.');
+          const prevDest = els.dest.value;
+          const destOptions = state.accounts
+            .filter(function (a) { return a.account_id !== state.activeSourceId; })
+            .map(function (a) {
+              return el("option", { value: a.account_id, textContent: a.owner_name + " (" + a.account_id + ")" });
             });
+          els.dest.replaceChildren.apply(els.dest, destOptions);
+          if (prevDest && prevDest !== state.activeSourceId) {
+            els.dest.value = prevDest;
+          }
+        }
 
-            tr.appendChild(el('td', 'font-mono', saga.saga_id));
-            tr.appendChild(el('td', 'font-mono', saga.idempotency_key));
-            tr.appendChild(el('td', 'font-mono', saga.source_account_id + ' -> ' + saga.destination_account_id));
-            tr.appendChild(el('td', 'col-right font-mono', formatUsdFromCents(saga.amount_cents)));
+        function renderMovements() {
+          els.integrity.textContent = "Descuadre global: " + formatMoney(state.audit.imbalance_cents || 0);
+          if (state.sagas.length === 0) {
+            els.txList.replaceChildren(
+              el("div", { className: "lc-tx-item" }, [
+                el("span", { style: "color:var(--ink-muted);", textContent: "Sin movimientos aún. Envía dinero o prueba doble clic para ver el registro." }),
+              ]),
+            );
+            return;
+          }
 
-            const statusTd = el('td');
-            statusTd.appendChild(createBadge(saga.status, toneForSagaStatus(saga.status)));
-            tr.appendChild(statusTd);
-
-            tr.appendChild(el('td', 'col-right font-mono', '#' + String(safeNonNegativeInt(saga.fencing_token, 0))));
-            tr.appendChild(el('td', 'font-mono', formatTimestampUtc(saga.updated_at || saga.created_at)));
-            return tr;
+          const nodes = state.sagas.slice(0, 12).map(function (s) {
+            const isOk = s.status === "SETTLED";
+            return el("div", { className: "lc-tx-item" }, [
+              el("div", {}, [
+                el("div", { style: "font-weight:600;font-size:14px;", textContent: s.source_account_id + " -> " + s.destination_account_id }),
+                el("div", { className: "lc-mono", style: "font-size:12px;color:var(--ink-muted);", textContent: s.saga_id }),
+              ]),
+              el("div", { style: "text-align:right;" }, [
+                el("div", { className: "lc-mono", style: "font-weight:600;", textContent: formatMoney(s.amount_cents) }),
+                el("span", {
+                  className: isOk ? "lc-badge-ok" : "lc-badge-rev",
+                  textContent: isOk ? "Completada" : "Revertida automáticamente",
+                }),
+              ]),
+            ]);
           });
-          sagasBody.replaceChildren.apply(sagasBody, rows);
+          els.txList.replaceChildren.apply(els.txList, nodes);
         }
-      }
-    }
 
-    function renderLedgerTable() {
-      const filterSel = /** @type {HTMLSelectElement|null} */ (document.getElementById('ledger-tx-filter'));
-      const tbody = document.getElementById('tbody-ledger');
-      const footerSummary = document.getElementById('ledger-footer-summary');
-      if (!tbody || !footerSummary) return;
-
-      // Sync transaction filter dropdown
-      if (filterSel) {
-        const txIds = [];
-        const seen = new Set();
-        appState.ledgerEntries.forEach(function (entry) {
-          if (!seen.has(entry.transaction_id)) {
-            seen.add(entry.transaction_id);
-            txIds.push(entry.transaction_id);
-          }
-        });
-
-        const currentVal = appState.ledgerFilterTx;
-        const options = [];
-        const allOpt = document.createElement('option');
-        allOpt.value = 'ALL';
-        allOpt.textContent = 'ALL TRANSACTIONS (' + String(appState.ledgerEntries.length) + ' entries)';
-        if (currentVal === 'ALL') allOpt.selected = true;
-        options.push(allOpt);
-
-        txIds.forEach(function (txId) {
-          const opt = document.createElement('option');
-          opt.value = txId;
-          opt.textContent = txId;
-          if (txId === currentVal) opt.selected = true;
-          options.push(opt);
-        });
-        filterSel.replaceChildren.apply(filterSel, options);
-        if (currentVal !== 'ALL' && !seen.has(currentVal)) {
-          appState.ledgerFilterTx = 'ALL';
-        }
-      }
-
-      const visibleEntries = appState.ledgerFilterTx === 'ALL'
-        ? appState.ledgerEntries
-        : appState.ledgerEntries.filter(function (entry) {
-            return entry.transaction_id === appState.ledgerFilterTx;
+        async function executeTransfer(amountCents, idemKey, simulateFail) {
+          const destId = els.dest.value;
+          if (!state.activeSourceId || !destId) return null;
+          const resp = await fetch("/api/v1/transfers", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Idempotency-Key": idemKey,
+            },
+            body: JSON.stringify({
+              source_account_id: state.activeSourceId,
+              destination_account_id: destId,
+              amount_cents: amountCents,
+              currency: "USD",
+              idempotency_key: idemKey,
+              simulate_settlement_failure: simulateFail,
+            }),
           });
-
-      if (visibleEntries.length === 0) {
-        renderTableEmptyState(
-          tbody,
-          7,
-          'No immutable double-entry ledger lines recorded yet',
-          'Each transfer posts paired balanced DEBIT and CREDIT rows (TRANSFER_RESERVE, TRANSFER_SETTLE, or SAGA_COMPENSATION).'
-        );
-        footerSummary.textContent = 'DEBITS $0.00 | CREDITS $0.00 | IMBALANCE $0.00';
-        return;
-      }
-
-      let scopeDebits = 0;
-      let scopeCredits = 0;
-
-      const rows = visibleEntries.map(function (entry) {
-        const cents = safeNonNegativeInt(entry.amount_cents, 0);
-        if (entry.direction === 'DEBIT') {
-          scopeDebits += cents;
-        } else if (entry.direction === 'CREDIT') {
-          scopeCredits += cents;
+          return { status: resp.status, body: await resp.json() };
         }
 
-        const tr = el('tr');
-        tr.appendChild(el('td', 'font-mono', entry.entry_id));
-        tr.appendChild(el('td', 'font-mono', entry.transaction_id));
-        tr.appendChild(el('td', 'font-mono', entry.account_id));
-
-        const dirTd = el('td');
-        dirTd.appendChild(createBadge(entry.direction, entry.direction === 'DEBIT' ? 'blue' : 'green'));
-        tr.appendChild(dirTd);
-
-        const amtTd = el('td', 'col-right font-mono');
-        const amtStack = el('div', 'cell-stack');
-        amtStack.appendChild(el('span', '', formatUsdFromCents(cents)));
-        amtStack.appendChild(el('span', 'cell-sub', formatCentsLabel(cents)));
-        amtTd.appendChild(amtStack);
-        tr.appendChild(amtTd);
-
-        const typeTd = el('td');
-        let typeTone = 'neutral';
-        if (entry.entry_type === 'TRANSFER_SETTLE') typeTone = 'green';
-        else if (entry.entry_type === 'TRANSFER_RESERVE') typeTone = 'blue';
-        else if (entry.entry_type === 'SAGA_COMPENSATION') typeTone = 'yellow';
-        typeTd.appendChild(createBadge(entry.entry_type, /** @type {'green'|'blue'|'yellow'|'neutral'} */ (typeTone)));
-        tr.appendChild(typeTd);
-
-        tr.appendChild(el('td', 'font-mono', formatTimestampUtc(entry.created_at)));
-        return tr;
-      });
-
-      tbody.replaceChildren.apply(tbody, rows);
-      const scopeImbalance = scopeDebits - scopeCredits;
-      footerSummary.textContent =
-        'DEBITS ' + formatUsdFromCents(scopeDebits) +
-        ' | CREDITS ' + formatUsdFromCents(scopeCredits) +
-        ' | IMBALANCE ' + formatUsdFromCents(scopeImbalance);
-    }
-
-    function renderAll() {
-      renderModeHeader();
-      renderTelemetryStrip();
-      renderAccountsBoard();
-      renderEventTabs();
-      renderLedgerTable();
-      updateLiveFingerprintPreview();
-    }
-
-    /* =========================================================================
-       6. LIVE HTTP & SAGA STATE INSPECTOR RENDERING
-       ========================================================================= */
-
-    /**
-     * Renders the visual Saga state machine progression stepper safely.
-     * @param {string} status
-     * @param {boolean} isReplay
-     * @param {number} httpStatus
-     */
-    function renderSagaStepper(status, isReplay, httpStatus) {
-      const container = document.getElementById('saga-stepper');
-      if (!container) return;
-
-      const nodes = [];
-      function addStep(label, cls) {
-        if (nodes.length > 0) {
-          nodes.push(el('span', 'step-sep', '->'));
-        }
-        nodes.push(el('span', 'step-node' + (cls ? ' ' + cls : ''), label));
-      }
-
-      if (httpStatus === 409) {
-        addStep('IDEMPOTENCY GUARD', 'is-error');
-        addStep('SHA-256 MISMATCH', 'is-error');
-        addStep('409 REJECTED', 'is-error');
-      } else if (httpStatus === 422 || httpStatus === 400 || httpStatus === 404) {
-        addStep('COMMAND VALIDATION', 'is-error');
-        addStep(String(httpStatus) + ' REJECTED', 'is-error');
-        addStep('ZERO MUTATION', 'is-done');
-      } else if (status === 'COMPENSATED') {
-        addStep('INITIATED', 'is-done');
-        addStep('RESERVED', 'is-done');
-        addStep('COMPENSATING', 'is-compensated');
-        addStep('COMPENSATED + DLQ', 'is-compensated');
-      } else if (status === 'FAILED_DLQ') {
-        addStep('INITIATED', 'is-done');
-        addStep('FAILED_DLQ', 'is-error');
-      } else if (status === 'SETTLED') {
-        const cls = isReplay ? 'is-replay' : 'is-done';
-        addStep('INITIATED', cls);
-        addStep('RESERVED', cls);
-        addStep(isReplay ? 'SETTLED (REPLAY)' : 'SETTLED', cls);
-      } else {
-        addStep('INITIATED', '');
-        addStep('RESERVED', '');
-        addStep('SETTLED', '');
-      }
-
-      container.replaceChildren.apply(container, nodes);
-    }
-
-    /**
-     * Extracts normalized Saga and error details from any live API or local engine response.
-     * @param {number} httpStatus
-     * @param {Record<string, unknown>} body
-     * @param {{ idempotency_key: string, request_fingerprint: string }} submittedMeta
-     */
-    function renderInspectorFromResponse(httpStatus, body, submittedMeta) {
-      const rawJsonText = JSON.stringify({ http_status: httpStatus, response: body }, null, 2);
-      appState.lastRawResponseJson = rawJsonText;
-
-      const sagaObj = (body && typeof body.saga === 'object' && body.saga !== null)
-        ? /** @type {Record<string, unknown>} */ (body.saga)
-        : (body && typeof body.saga_id === 'string' ? body : null);
-
-      const isReplay = Boolean(
-        (body && body.idempotent_replay === true) ||
-        (sagaObj && sagaObj.idempotent_replay === true) ||
-        httpStatus === 200
-      );
-
-      // Extract error envelope fields (FastAPI detail or flat error object)
-      const detailObj = (body && typeof body.detail === 'object' && body.detail !== null && !Array.isArray(body.detail))
-        ? /** @type {Record<string, unknown>} */ (body.detail)
-        : (body && typeof body.error === 'object' && body.error !== null
-            ? /** @type {Record<string, unknown>} */ (body.error)
-            : body);
-
-      const errorCode = typeof detailObj.code === 'string' ? detailObj.code : '';
-      const errorMsg = typeof detailObj.message === 'string'
-        ? detailObj.message
-        : (typeof body.detail === 'string' ? body.detail : (typeof body.message === 'string' ? body.message : ''));
-      const errorDetails = (detailObj.details && typeof detailObj.details === 'object')
-        ? /** @type {Record<string, unknown>} */ (detailObj.details)
-        : {};
-
-      const httpBadge = document.getElementById('inspector-http-badge');
-      const banner = document.getElementById('inspector-banner');
-      const conflictRow = document.getElementById('insp-conflict-row');
-      const conflictDetail = document.getElementById('insp-conflict-detail');
-
-      if (conflictRow) conflictRow.hidden = true;
-
-      if (httpStatus === 201 && sagaObj) {
-        const sagaStatus = String(sagaObj.status || 'SETTLED');
-        const isComp = sagaStatus === 'COMPENSATED';
-        if (httpBadge) {
-          httpBadge.className = 'badge font-mono ' + (isComp ? 'badge-yellow' : 'badge-green');
-          httpBadge.textContent = isComp ? '201 · COMPENSATED + DLQ' : '201 CREATED · SETTLED';
-        }
-        if (banner) {
-          banner.className = 'inspector-banner ' + (isComp ? 'tone-yellow' : 'tone-green');
-          banner.textContent = isComp
-            ? 'Phase-2 settlement failure injected: Saga automatically posted append-only SAGA_COMPENSATION entries restoring source balance and archived a DeadLetterEvent.'
-            : 'Transfer Saga executed atomically through Reserve -> Escrow -> Settle with zero-sum double-entry verification and Outbox relay publication.';
-        }
-        renderSagaStepper(sagaStatus, false, 201);
-      } else if (httpStatus === 200 && sagaObj) {
-        if (httpBadge) {
-          httpBadge.className = 'badge badge-blue font-mono';
-          httpBadge.textContent = '200 OK · IDEMPOTENT REPLAY';
-        }
-        if (banner) {
-          banner.className = 'inspector-banner tone-blue';
-          banner.textContent = 'Idempotency guard matched the canonical SHA-256 request fingerprint. Returned persisted Saga state with zero duplicate debits, zero extra ledger entries, and zero double-spend.';
-        }
-        renderSagaStepper(String(sagaObj.status || 'SETTLED'), true, 200);
-      } else if (httpStatus === 409) {
-        if (httpBadge) {
-          httpBadge.className = 'badge badge-yellow font-mono';
-          httpBadge.textContent = '409 CONFLICT';
-        }
-        if (banner) {
-          banner.className = 'inspector-banner tone-yellow';
-          banner.textContent = (errorCode ? errorCode + ': ' : '') + (errorMsg || 'Idempotency-Key reused with a conflicting transfer payload.');
-        }
-        if (conflictRow && conflictDetail) {
-          const expFp = typeof errorDetails.expected_fingerprint === 'string' ? errorDetails.expected_fingerprint : '(persisted SHA-256)';
-          const recFp = typeof errorDetails.received_fingerprint === 'string' ? errorDetails.received_fingerprint : submittedMeta.request_fingerprint;
-          conflictDetail.textContent = 'expected: ' + expFp + '  !=  received: ' + recFp;
-          conflictRow.hidden = false;
-        }
-        renderSagaStepper('CONFLICT', false, 409);
-      } else {
-        if (httpBadge) {
-          httpBadge.className = 'badge badge-red font-mono';
-          httpBadge.textContent = String(httpStatus) + (httpStatus === 422 ? ' UNPROCESSABLE' : ' ERROR');
-        }
-        if (banner) {
-          banner.className = 'inspector-banner tone-red';
-          banner.textContent = (errorCode ? errorCode + ': ' : '') + (errorMsg || 'Transfer rejected by domain invariants; zero account balances modified.');
-        }
-        renderSagaStepper('REJECTED', false, httpStatus);
-      }
-
-      setText('insp-http-status', String(httpStatus) + (httpStatus === 201 ? ' Created' : httpStatus === 200 ? ' OK' : httpStatus === 409 ? ' Conflict' : httpStatus === 422 ? ' Unprocessable Entity' : ' Error'));
-      setText('insp-saga-status', sagaObj ? String(sagaObj.status || '-') : (errorCode || 'REJECTED'));
-      setText('insp-fencing-token', sagaObj && typeof sagaObj.fencing_token === 'number' ? '#' + String(safeNonNegativeInt(sagaObj.fencing_token, 0)) : 'N/A (not acquired)');
-      setText('insp-idempotent-replay', sagaObj ? String(isReplay) : 'false');
-      setText('insp-saga-id', sagaObj && typeof sagaObj.saga_id === 'string' ? sagaObj.saga_id : 'N/A');
-      setText('insp-idem-key', sagaObj && typeof sagaObj.idempotency_key === 'string' ? sagaObj.idempotency_key : submittedMeta.idempotency_key);
-      setText('insp-fingerprint', sagaObj && typeof sagaObj.request_fingerprint === 'string' ? sagaObj.request_fingerprint : submittedMeta.request_fingerprint);
-      setText('insp-raw-json', rawJsonText);
-    }
-
-    /**
-     * Loads a persisted Saga record from the Saga Registry into the Inspector.
-     * @param {SagaRecord} saga
-     * @param {number} httpStatus
-     * @param {boolean} isReplay
-     * @param {string} note
-     */
-    function renderInspectorFromSaga(saga, httpStatus, isReplay, note) {
-      const envelope = { saga: saga, idempotent_replay: isReplay, note: note };
-      renderInspectorFromResponse(httpStatus, envelope, {
-        idempotency_key: saga.idempotency_key,
-        request_fingerprint: saga.request_fingerprint,
-      });
-    }
-
-    /* =========================================================================
-       7. FORM VALIDATION, LIVE FINGERPRINT & 4 ONE-CLICK SCENARIOS
-       ========================================================================= */
-
-    /** @param {string} id @param {string} text */
-    function setText(id, text) {
-      const node = document.getElementById(id);
-      if (node) {
-        node.textContent = text;
-      }
-    }
-
-    /**
-     * Generates a fresh Idempotency-Key guaranteed not to collide with any loaded Saga.
-     * @param {string} prefix
-     * @returns {string}
-     */
-    function generateUnusedIdempotencyKey(prefix) {
-      const used = new Set(appState.sagas.map(function (s) { return s.idempotency_key; }));
-      for (let i = 1; i < 10000; i += 1) {
-        appState.demoCounter += 1;
-        const candidate = prefix + '-' + String(appState.demoCounter).padStart(3, '0');
-        if (!used.has(candidate)) {
-          return candidate;
-        }
-      }
-      return prefix + '-' + String(Date.now());
-    }
-
-    /**
-     * Validates all workbench form inputs without mutating the user's cursor or numeric string.
-     * @returns {{ valid: true, command: { idempotency_key: string, source_account_id: string, destination_account_id: string, amount_cents: number, currency: string, simulate_settlement_failure: boolean }, fingerprint: string } | { valid: false }}
-     */
-    function validateWorkbenchForm() {
-      const sourceEl = /** @type {HTMLSelectElement|null} */ (document.getElementById('input-source-account'));
-      const destEl = /** @type {HTMLSelectElement|null} */ (document.getElementById('input-dest-account'));
-      const amountEl = /** @type {HTMLInputElement|null} */ (document.getElementById('input-amount-usd'));
-      const keyEl = /** @type {HTMLInputElement|null} */ (document.getElementById('input-idempotency-key'));
-      const failEl = /** @type {HTMLInputElement|null} */ (document.getElementById('input-simulate-failure'));
-
-      const amountMsg = document.getElementById('amount-validation-msg');
-      const keyMsg = document.getElementById('key-validation-msg');
-      const accErr = document.getElementById('form-account-error');
-
-      if (!sourceEl || !destEl || !amountEl || !keyEl || !failEl) {
-        return { valid: false };
-      }
-
-      let isValid = true;
-      const parsedAmount = parseUsdAmountToCents(amountEl.value);
-
-      if (parsedAmount.valid) {
-        amountEl.classList.remove('is-invalid');
-        if (amountMsg) {
-          amountMsg.className = 'validation-msg font-mono is-valid';
-          amountMsg.textContent = 'Exact Minor Units: ' + formatCentsLabel(parsedAmount.cents) + ' (' + formatUsdFromCents(parsedAmount.cents) + ')';
-        }
-      } else {
-        isValid = false;
-        amountEl.classList.add('is-invalid');
-        if (amountMsg) {
-          amountMsg.className = 'validation-msg font-mono is-error';
-          amountMsg.textContent = parsedAmount.error;
-        }
-      }
-
-      const trimmedKey = keyEl.value.trim();
-      if (trimmedKey.length > 0 && trimmedKey.length <= 128) {
-        keyEl.classList.remove('is-invalid');
-        if (keyMsg) {
-          keyMsg.className = 'validation-msg font-mono';
-          keyMsg.textContent = 'Header: Idempotency-Key: ' + trimmedKey;
-        }
-      } else {
-        isValid = false;
-        keyEl.classList.add('is-invalid');
-        if (keyMsg) {
-          keyMsg.className = 'validation-msg font-mono is-error';
-          keyMsg.textContent = trimmedKey.length === 0
-            ? 'Idempotency-Key is required for retry safety.'
-            : 'Idempotency-Key must be 128 characters or fewer.';
-        }
-      }
-
-      if (sourceEl.value && destEl.value && sourceEl.value === destEl.value) {
-        isValid = false;
-        sourceEl.classList.add('is-invalid');
-        destEl.classList.add('is-invalid');
-        if (accErr) {
-          accErr.className = 'validation-msg font-mono is-error';
-          accErr.textContent = 'Source and destination accounts must be distinct.';
-        }
-      } else {
-        sourceEl.classList.remove('is-invalid');
-        destEl.classList.remove('is-invalid');
-        if (accErr) {
-          accErr.className = 'validation-msg font-mono';
-          accErr.textContent = '';
-        }
-      }
-
-      if (!isValid || !parsedAmount.valid) {
-        return { valid: false };
-      }
-
-      const command = {
-        idempotency_key: trimmedKey,
-        source_account_id: sourceEl.value,
-        destination_account_id: destEl.value,
-        amount_cents: parsedAmount.cents,
-        currency: 'USD',
-        simulate_settlement_failure: Boolean(failEl.checked),
-      };
-      const fingerprint = computeCanonicalFingerprint(command);
-      return { valid: true, command: command, fingerprint: fingerprint };
-    }
-
-    function updateLiveFingerprintPreview() {
-      const hashEl = document.getElementById('live-fingerprint-hash');
-      const statusEl = document.getElementById('fingerprint-match-status');
-      const failCheckbox = /** @type {HTMLInputElement|null} */ (document.getElementById('input-simulate-failure'));
-      const failPanel = document.getElementById('failure-checkbox-panel');
-
-      if (failCheckbox && failPanel) {
-        if (failCheckbox.checked) {
-          failPanel.classList.add('is-armed');
-        } else {
-          failPanel.classList.remove('is-armed');
-        }
-      }
-
-      const check = validateWorkbenchForm();
-      if (!hashEl || !statusEl) return;
-
-      if (!check.valid) {
-        hashEl.textContent = 'Fix input validation errors above to compute canonical SHA-256 fingerprint.';
-        statusEl.textContent = 'INVALID INPUT';
-        return;
-      }
-
-      hashEl.textContent = check.fingerprint;
-      const existing = appState.sagas.find(function (s) {
-        return s.idempotency_key === check.command.idempotency_key;
-      });
-      if (!existing) {
-        statusEl.textContent = 'NEW KEY -> EXPECT 201';
-      } else if (existing.request_fingerprint === check.fingerprint) {
-        statusEl.textContent = 'EXACT FINGERPRINT MATCH -> EXPECT 200 REPLAY';
-      } else {
-        statusEl.textContent = 'FINGERPRINT MISMATCH -> EXPECT 409 CONFLICT';
-      }
-    }
-
-    /**
-     * Populates form controls cleanly for scenario demos.
-     * @param {{ source: string, dest: string, amountUsd: string, key: string, simulateFailure: boolean }} cfg
-     */
-    function populateWorkbenchForm(cfg) {
-      const sourceEl = /** @type {HTMLSelectElement|null} */ (document.getElementById('input-source-account'));
-      const destEl = /** @type {HTMLSelectElement|null} */ (document.getElementById('input-dest-account'));
-      const amountEl = /** @type {HTMLInputElement|null} */ (document.getElementById('input-amount-usd'));
-      const keyEl = /** @type {HTMLInputElement|null} */ (document.getElementById('input-idempotency-key'));
-      const failEl = /** @type {HTMLInputElement|null} */ (document.getElementById('input-simulate-failure'));
-
-      if (sourceEl) sourceEl.value = cfg.source;
-      if (destEl) destEl.value = cfg.dest;
-      if (amountEl) amountEl.value = cfg.amountUsd;
-      if (keyEl) keyEl.value = cfg.key;
-      if (failEl) failEl.checked = cfg.simulateFailure;
-      updateLiveFingerprintPreview();
-    }
-
-    /**
-     * Sets disabled state across interactive dispatch buttons during an in-flight transfer.
-     * @param {boolean} isBusy
-     */
-    function setBusyState(isBusy) {
-      appState.busy = isBusy;
-      const ids = [
-        'btn-submit-transfer',
-        'demo-btn-settled',
-        'demo-btn-replay',
-        'demo-btn-conflict',
-        'demo-btn-crash',
-        'btn-test-overdraft',
-      ];
-      ids.forEach(function (id) {
-        const btn = /** @type {HTMLButtonElement|null} */ (document.getElementById(id));
-        if (btn) btn.disabled = isBusy;
-      });
-    }
-
-    /**
-     * Executes the current validated workbench form and refreshes all telemetry views.
-     */
-    async function submitCurrentWorkbench() {
-      if (appState.busy) return;
-      const validation = validateWorkbenchForm();
-      if (!validation.valid) {
-        updateLiveFingerprintPreview();
-        return;
-      }
-
-      setBusyState(true);
-      try {
-        const result = await dispatchTransferCommand(validation.command);
-        await refreshAllState(true);
-        renderInspectorFromResponse(result.httpStatus, result.body, {
-          idempotency_key: validation.command.idempotency_key,
-          request_fingerprint: validation.fingerprint,
-        });
-
-        // Switch smoothly to DLQ tab if this command generated a compensated DLQ failure
-        const sagaObj = result.body && typeof result.body.saga === 'object' && result.body.saga !== null
-          ? /** @type {Record<string, unknown>} */ (result.body.saga)
-          : result.body;
-        if (result.httpStatus === 201 && sagaObj && sagaObj.status === 'COMPENSATED') {
-          activateEventTab('dlq');
-        }
-      } finally {
-        setBusyState(false);
-      }
-    }
-
-    // Scenario 1: Execute Settled Transfer (201)
-    async function runDemoSettled() {
-      if (appState.busy) return;
-      const freshKey = generateUnusedIdempotencyKey('idem-settle');
-      const cfg = {
-        source: 'ACC-TREASURY-001',
-        dest: 'ACC-MERCHANT-002',
-        amountUsd: '1250.00',
-        key: freshKey,
-        simulateFailure: false,
-      };
-      appState.lastDemoContext = {
-        key: cfg.key,
-        source: cfg.source,
-        dest: cfg.dest,
-        amountUsd: cfg.amountUsd,
-        simulateFailure: false,
-      };
-      populateWorkbenchForm(cfg);
-      await submitCurrentWorkbench();
-    }
-
-    // Scenario 2: Replay Same Idempotency-Key (200 Zero Double-Spend)
-    async function runDemoReplay() {
-      if (appState.busy) return;
-      if (!appState.lastDemoContext) {
-        await runDemoSettled();
-      }
-      const ctx = appState.lastDemoContext;
-      if (!ctx) return;
-      populateWorkbenchForm({
-        source: ctx.source,
-        dest: ctx.dest,
-        amountUsd: ctx.amountUsd,
-        key: ctx.key,
-        simulateFailure: ctx.simulateFailure,
-      });
-      await submitCurrentWorkbench();
-    }
-
-    // Scenario 3: Reuse Key w/ Different Amount (409 Conflict)
-    async function runDemoConflict() {
-      if (appState.busy) return;
-      if (!appState.lastDemoContext) {
-        await runDemoSettled();
-      }
-      const ctx = appState.lastDemoContext;
-      if (!ctx) return;
-      const conflictingAmount = ctx.amountUsd === '2500.00' ? '3750.00' : '2500.00';
-      populateWorkbenchForm({
-        source: ctx.source,
-        dest: ctx.dest,
-        amountUsd: conflictingAmount,
-        key: ctx.key,
-        simulateFailure: ctx.simulateFailure,
-      });
-      await submitCurrentWorkbench();
-    }
-
-    // Scenario 4: Simulate Settlement Crash (Compensated + DLQ)
-    async function runDemoCrash() {
-      if (appState.busy) return;
-      const crashKey = generateUnusedIdempotencyKey('idem-crash');
-      populateWorkbenchForm({
-        source: 'ACC-CUSTOMER-003',
-        dest: 'ACC-SETTLEMENT-004',
-        amountUsd: '750.00',
-        key: crashKey,
-        simulateFailure: true,
-      });
-      await submitCurrentWorkbench();
-    }
-
-    // Bonus Diagnostic: Test Insufficient Funds Overdraft (422)
-    async function runTestOverdraft422() {
-      if (appState.busy) return;
-      const key = generateUnusedIdempotencyKey('idem-overdraft');
-      populateWorkbenchForm({
-        source: 'ACC-CUSTOMER-003',
-        dest: 'ACC-MERCHANT-002',
-        amountUsd: '999999.00',
-        key: key,
-        simulateFailure: false,
-      });
-      await submitCurrentWorkbench();
-    }
-
-    /* =========================================================================
-       8. TABS, SCROLL OBSERVER & EVENT WIRING
-       ========================================================================= */
-
-    /** @param {'outbox'|'kafka'|'dlq'|'sagas'} tabName */
-    function activateEventTab(tabName) {
-      appState.activeTab = tabName;
-      const endpointMap = {
-        outbox: 'GET /api/v1/outbox',
-        kafka: 'GET /api/v1/kafka/events',
-        dlq: 'GET /api/v1/dlq',
-        sagas: 'GET /api/v1/sagas',
-      };
-      setText('tab-endpoint-hint', endpointMap[tabName] || 'GET /api/v1/outbox');
-
-      const tabButtons = document.querySelectorAll('.tab-btn');
-      tabButtons.forEach(function (btn) {
-        const isMatch = btn.getAttribute('data-tab') === tabName;
-        btn.classList.toggle('is-active', isMatch);
-        btn.setAttribute('aria-selected', isMatch ? 'true' : 'false');
-      });
-
-      const tabPanels = document.querySelectorAll('.tab-panel');
-      tabPanels.forEach(function (panel) {
-        panel.classList.toggle('is-active', panel.id === 'tab-panel-' + tabName);
-      });
-
-      renderEventTabs();
-    }
-
-    function setupScrollRevealObserver() {
-      if (typeof window.IntersectionObserver !== 'function') {
-        return;
-      }
-      const sections = document.querySelectorAll('.reveal');
-      const observer = new IntersectionObserver(
-        function (entries) {
-          entries.forEach(function (entry) {
-            if (entry.isIntersecting) {
-              entry.target.classList.remove('is-pending');
-              observer.unobserve(entry.target);
-            }
-          });
-        },
-        { threshold: 0.05 }
-      );
-
-      sections.forEach(function (sec, idx) {
-        if (idx >= 2) {
-          sec.classList.add('is-pending');
-          observer.observe(sec);
-        }
-      });
-    }
-
-    function bindEvents() {
-      const form = document.getElementById('transfer-form');
-      if (form) {
-        form.addEventListener('submit', function (event) {
-          event.preventDefault();
-          submitCurrentWorkbench();
-        });
-      }
-
-      ['input-source-account', 'input-dest-account', 'input-amount-usd', 'input-idempotency-key', 'input-simulate-failure'].forEach(function (id) {
-        const node = document.getElementById(id);
-        if (node) {
-          node.addEventListener('input', updateLiveFingerprintPreview);
-          node.addEventListener('change', updateLiveFingerprintPreview);
-        }
-      });
-
-      const genKeyBtn = document.getElementById('btn-gen-key');
-      if (genKeyBtn) {
-        genKeyBtn.addEventListener('click', function () {
-          const keyInput = /** @type {HTMLInputElement|null} */ (document.getElementById('input-idempotency-key'));
-          if (keyInput) {
-            keyInput.value = generateUnusedIdempotencyKey('idem-tx');
-            updateLiveFingerprintPreview();
+        document.getElementById("lc-transfer-form").addEventListener("submit", async function (e) {
+          e.preventDefault();
+          const cents = Math.round(Number(els.amount.value || 0) * 100);
+          if (!Number.isFinite(cents) || cents <= 0) {
+            showFeedback("warn", "Ingresa un monto mayor a cero.");
+            return;
           }
-        });
-      }
-
-      const swapBtn = document.getElementById('btn-swap-accounts');
-      if (swapBtn) {
-        swapBtn.addEventListener('click', function () {
-          const sourceEl = /** @type {HTMLSelectElement|null} */ (document.getElementById('input-source-account'));
-          const destEl = /** @type {HTMLSelectElement|null} */ (document.getElementById('input-dest-account'));
-          if (sourceEl && destEl) {
-            const temp = sourceEl.value;
-            sourceEl.value = destEl.value;
-            destEl.value = temp;
-            updateLiveFingerprintPreview();
+          const key = "pay-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6);
+          const res = await executeTransfer(cents, key, false);
+          if (res && res.status < 300) {
+            showFeedback("ok", "Transferencia enviada por " + formatMoney(cents) + " con saldo verificado.");
+          } else {
+            showFeedback("warn", (res && res.body && res.body.message) || "No se pudo completar la transferencia.");
           }
+          await loadWallet();
         });
-      }
 
-      const overdraftBtn = document.getElementById('btn-test-overdraft');
-      if (overdraftBtn) {
-        overdraftBtn.addEventListener('click', runTestOverdraft422);
-      }
-
-      const btnSettled = document.getElementById('demo-btn-settled');
-      const btnReplay = document.getElementById('demo-btn-replay');
-      const btnConflict = document.getElementById('demo-btn-conflict');
-      const btnCrash = document.getElementById('demo-btn-crash');
-      if (btnSettled) btnSettled.addEventListener('click', runDemoSettled);
-      if (btnReplay) btnReplay.addEventListener('click', runDemoReplay);
-      if (btnConflict) btnConflict.addEventListener('click', runDemoConflict);
-      if (btnCrash) btnCrash.addEventListener('click', runDemoCrash);
-
-      const syncBtn = document.getElementById('btn-sync-api');
-      if (syncBtn) {
-        syncBtn.addEventListener('click', function () {
-          refreshAllState(false);
-        });
-      }
-
-      const resetBtn = document.getElementById('btn-reset-local');
-      if (resetBtn) {
-        resetBtn.addEventListener('click', function () {
-          localEngine.reset();
-          appState.lastDemoContext = null;
-          appState.demoCounter = 0;
-          appState.ledgerFilterTx = 'ALL';
-          const keyEl = /** @type {HTMLInputElement|null} */ (document.getElementById('input-idempotency-key'));
-          if (keyEl) keyEl.value = 'idem-settle-001';
-          refreshAllState(false);
-        });
-      }
-
-      const verifyAuditBtn = document.getElementById('btn-verify-audit');
-      if (verifyAuditBtn) {
-        verifyAuditBtn.addEventListener('click', async function () {
-          await refreshAllState(false);
-          const auditText =
-            'Zero-Sum Audit Verified (' + appState.mode + '): ' +
-            'DEBITS=' + formatUsdFromCents(appState.audit.total_debits_cents) +
-            ' == CREDITS=' + formatUsdFromCents(appState.audit.total_credits_cents) +
-            ' (imbalance=' + formatUsdFromCents(appState.audit.imbalance_cents) + ').';
-          const banner = document.getElementById('inspector-banner');
-          if (banner) {
-            banner.className = 'inspector-banner ' + (appState.audit.is_balanced ? 'tone-green' : 'tone-red');
-            banner.textContent = auditText;
+        document.getElementById("lc-double-click-btn").addEventListener("click", async function () {
+          const key = "dbl-" + Date.now();
+          const first = await executeTransfer(5000, key, false);
+          const second = await executeTransfer(5000, key, false);
+          if (first && second && second.body && second.body.idempotent_replay) {
+            showFeedback("ok", "Protección anti-doble cobro verificada: se enviaron 2 clics idénticos ($50.00) y solo se descontó una vez (huella SHA-256).");
+          } else {
+            showFeedback("warn", "No se pudo simular el reintento en este momento.");
           }
+          await loadWallet();
         });
-      }
 
-      const ledgerFilter = /** @type {HTMLSelectElement|null} */ (document.getElementById('ledger-tx-filter'));
-      if (ledgerFilter) {
-        ledgerFilter.addEventListener('change', function () {
-          appState.ledgerFilterTx = ledgerFilter.value;
-          renderLedgerTable();
-        });
-      }
-
-      const copyJsonBtn = document.getElementById('btn-copy-json');
-      if (copyJsonBtn) {
-        copyJsonBtn.addEventListener('click', async function () {
-          try {
-            if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
-              await navigator.clipboard.writeText(appState.lastRawResponseJson);
-              copyJsonBtn.textContent = 'Copied';
-              window.setTimeout(function () {
-                copyJsonBtn.textContent = 'Copy JSON';
-              }, 1400);
-            }
-          } catch (_copyErr) {
-            copyJsonBtn.textContent = 'Copy Unavailable';
-            window.setTimeout(function () {
-              copyJsonBtn.textContent = 'Copy JSON';
-            }, 1400);
+        document.getElementById("lc-net-fail-btn").addEventListener("click", async function () {
+          const key = "fail-" + Date.now();
+          const res = await executeTransfer(7500, key, true);
+          if (res && res.body && res.body.saga && res.body.saga.status === "COMPENSATED") {
+            showFeedback("warn", "El banco receptor falló: la transferencia de $75.00 se revirtió automáticamente y tu saldo quedó intacto.");
           }
+          await loadWallet();
         });
-      }
 
-      document.querySelectorAll('.tab-btn').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          const tab = btn.getAttribute('data-tab');
-          if (tab === 'outbox' || tab === 'kafka' || tab === 'dlq' || tab === 'sagas') {
-            activateEventTab(tab);
-          }
-        });
-      });
-
-      // Keyboard Shortcuts (ignored while typing inside form inputs)
-      document.addEventListener('keydown', function (event) {
-        const activeTag = document.activeElement ? document.activeElement.tagName : '';
-        if (activeTag === 'INPUT' || activeTag === 'SELECT' || activeTag === 'TEXTAREA') {
-          return;
+        function renderArchitectureDrawer() {
+          els.archBody.replaceChildren(
+            el("div", { className: "lc-tx-item" }, [
+              el("span", { textContent: "Balance Zero-Sum Global" }),
+              el("strong", { className: "lc-mono", style: "color:var(--emerald-cta);", textContent: "Imbalance: " + formatMoney(state.audit.imbalance_cents || 0) + " (" + (state.audit.total_entries || 0) + " asientos)" }),
+            ]),
+            el("div", { className: "lc-tx-item" }, [
+              el("span", { textContent: "Transactional Outbox / DLQ" }),
+              el("span", { className: "lc-mono", textContent: state.outbox.length + " eventos outbox · " + state.dlq.length + " DLQ" }),
+            ]),
+            el("p", { style: "margin:0;font-size:13.5px;color:var(--ink-muted);", textContent: "Arquitectura Java 21 / Spring Boot 3 Blueprint + motor Python ACID: cada envío escribe asientos de partida doble y eventos outbox en la misma transacción, con llaves Idempotency-Key SHA-256 y compensación Saga." }),
+            el("button", {
+              type: "button",
+              className: "lc-btn-primary",
+              textContent: "Despachar eventos Outbox pendientes",
+              onClick: async function () {
+                await fetch("/api/v1/outbox/relay", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ limit: 50 }) });
+                await loadWallet();
+              },
+            }),
+          );
         }
-        if (event.metaKey || event.ctrlKey || event.altKey) {
-          return;
-        }
-        if (event.key === 'r' || event.key === 'R') {
-          event.preventDefault();
-          refreshAllState(false);
-        } else if (event.key === '1') {
-          event.preventDefault();
-          runDemoSettled();
-        } else if (event.key === '2') {
-          event.preventDefault();
-          runDemoReplay();
-        } else if (event.key === '3') {
-          event.preventDefault();
-          runDemoConflict();
-        } else if (event.key === '4') {
-          event.preventDefault();
-          runDemoCrash();
-        }
-      });
-    }
 
-    /* =========================================================================
-       9. BOOTSTRAP
-       ========================================================================= */
+        document.getElementById("lc-arch-btn").addEventListener("click", function () { renderArchitectureDrawer(); els.archBackdrop.setAttribute("data-open", "true"); });
+        document.getElementById("lc-arch-close").addEventListener("click", function () { els.archBackdrop.setAttribute("data-open", "false"); });
+        window.addEventListener("keydown", function (e) { if (e.key === "Escape") els.archBackdrop.setAttribute("data-open", "false"); });
 
-    async function bootstrapConsole() {
-      setupScrollRevealObserver();
-      bindEvents();
-
-      const keyInput = /** @type {HTMLInputElement|null} */ (document.getElementById('input-idempotency-key'));
-      if (keyInput && !keyInput.value) {
-        keyInput.value = 'idem-tx-001';
-      }
-
-      await refreshAllState(false);
-      updateLiveFingerprintPreview();
-    }
-
-    document.addEventListener('DOMContentLoaded', bootstrapConsole);
-  </script>
-</body>
+        loadWallet();
+      })();
+    </script>
+  </body>
 </html>
