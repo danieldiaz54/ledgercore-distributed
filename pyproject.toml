@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ledgercore-distributed"
+version = "1.0.0"
+description = "Distributed Double-Entry Accounting Engine with Saga Orchestration, Transactional Outbox Relay, Idempotency-Key Guardrails, Distributed Lock Fencing, and DLQ Compensation"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [
+  { name = "Daniel" }
+]
+dependencies = []
+
+[project.optional-dependencies]
+production = [
+  "psycopg[binary]>=3.2.0",
+  "redis>=5.1.0",
+  "confluent-kafka>=2.6.0",
+]
+dev = [
+  "ruff>=0.8.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
