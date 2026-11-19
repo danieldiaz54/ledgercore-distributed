@@ -1,0 +1,70 @@
+services:
+  ledgercore-postgres:
+    image: postgres:16-alpine
+    container_name: ledgercore-postgres
+    ports:
+      - "5441:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ledger_dev}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ledger_dev_local}
+      POSTGRES_DB: ${POSTGRES_DB:-ledgercore_dev}
+    volumes:
+      - ./migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ledger_dev} -d ${POSTGRES_DB:-ledgercore_dev}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  ledgercore-redis:
+    image: redis:7-alpine
+    container_name: ledgercore-redis
+    ports:
+      - "6381:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  ledgercore-kafka:
+    image: apache/kafka:3.8.0
+    container_name: ledgercore-kafka
+    ports:
+      - "19092:19092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:19092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://ledgercore-kafka:9092,EXTERNAL://localhost:19092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@ledgercore-kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      CLUSTER_ID: "ledgercore-kraft-cluster-01"
+
+  ledgercore-distributed:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ledgercore-distributed
+    ports:
+      - "8096:8096"
+    environment:
+      LEDGERCORE_ENV: development
+      LEDGERCORE_HOST: 0.0.0.0
+      LEDGERCORE_PORT: 8096
+      LEDGERCORE_SQLITE_PATH: /app/.data/ledgercore_dev.sqlite3
+      POSTGRES_URL: postgresql://${POSTGRES_USER:-ledger_dev}:${POSTGRES_PASSWORD:-ledger_dev_local}@ledgercore-postgres:5432/${POSTGRES_DB:-ledgercore_dev}
+      KAFKA_BOOTSTRAP_SERVERS: ledgercore-kafka:9092
+      REDIS_URL: redis://ledgercore-redis:6379/0
+    depends_on:
+      ledgercore-postgres:
+        condition: service_healthy
+      ledgercore-redis:
+        condition: service_healthy
